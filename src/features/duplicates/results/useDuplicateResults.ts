@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
-import { BackendCommandError } from "@/lib/backend/BackendCommandError";
 import { setFileKeep, setKeepRule } from "@/lib/backend/duplicates";
 import { openDuplicateWithDefaultApp, revealDuplicateInExplorer } from "@/lib/backend/fileActions";
 import { pickFolder } from "@/lib/backend/folderPicker";
@@ -13,6 +12,7 @@ import type {
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
 import { useDuplicateSearchStore } from "../search/useDuplicateSearchStore";
 import { findGroupInPages } from "./groupPageCache";
+import { isGroupWouldHaveNoKeptFileError } from "./isGroupWouldHaveNoKeptFileError";
 import { type KeepRuleKind, keepRuleFromKind, preferredFolderOf } from "./keepRuleOptions";
 import { applyGroupChangeToSelection, canMarkForRemoval } from "./selectionSummary";
 import {
@@ -37,20 +37,6 @@ export type UseDuplicateResultsResult = {
   revealFile: (path: string) => void;
   openFile: (path: string) => void;
 };
-
-function isLastKeptCopyError(error: unknown): boolean {
-  if (!(error instanceof BackendCommandError)) {
-    return false;
-  }
-
-  const commandError: unknown = error.commandError;
-  return (
-    typeof commandError === "object" &&
-    commandError !== null &&
-    "kind" in commandError &&
-    commandError.kind === "groupWouldHaveNoKeptFile"
-  );
-}
 
 function showLastKeptCopyToast(): void {
   toast.error(LAST_KEPT_COPY_TOAST_TITLE, { description: LAST_KEPT_COPY_TOAST_DESCRIPTION });
@@ -152,7 +138,7 @@ export function useDuplicateResults(searchId: DuplicateSearchId): UseDuplicateRe
           );
         })
         .catch((error: unknown) => {
-          if (isLastKeptCopyError(error)) {
+          if (isGroupWouldHaveNoKeptFileError(error)) {
             showLastKeptCopyToast();
             return;
           }

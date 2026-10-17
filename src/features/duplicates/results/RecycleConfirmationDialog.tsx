@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatBytesAsReadableSize } from "@/lib/formatting/formatBytesAsReadableSize";
-import { pluralize } from "../formatting/pluralize";
+import { describeRecycleScope } from "./describeRecycleScope";
 import { RecycleFileList } from "./RecycleFileList";
 import type { RecycleConfirmationState } from "./useRecycleDuplicates";
 
@@ -30,7 +30,15 @@ export function RecycleConfirmationDialog({
   const hasFiles = confirmation.status === "ready" || confirmation.status === "recycling";
   const isRecycling = confirmation.status === "recycling";
   const fileCount = hasFiles ? confirmation.filesToRemove.length : 0;
-  const totalSizeText = hasFiles ? formatBytesAsReadableSize(confirmation.totalBytes) : "";
+  const scopeText =
+    confirmation.status === "closed"
+      ? null
+      : describeRecycleScope(
+          confirmation.scope,
+          hasFiles
+            ? { fileCount, readableSize: formatBytesAsReadableSize(confirmation.totalBytes) }
+            : null,
+        );
 
   return (
     <AlertDialog
@@ -43,15 +51,8 @@ export function RecycleConfirmationDialog({
     >
       <AlertDialogContent className="sm:max-w-xl">
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            {hasFiles
-              ? `Move ${pluralize(fileCount, "file", "files")} (${totalSizeText}) to the Recycle Bin?`
-              : "Move copies to the Recycle Bin?"}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            These copies go to the Recycle Bin, not away for good: you can restore any of them from
-            there. At least one copy of every file stays where it is.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{scopeText?.title}</AlertDialogTitle>
+          <AlertDialogDescription>{scopeText?.description}</AlertDialogDescription>
         </AlertDialogHeader>
 
         {confirmation.status === "loading" && (
@@ -71,6 +72,10 @@ export function RecycleConfirmationDialog({
 
         {hasFiles && <RecycleFileList filesToRemove={confirmation.filesToRemove} />}
 
+        {hasFiles && scopeText?.note && (
+          <p className="text-muted-foreground text-sm">{scopeText.note}</p>
+        )}
+
         {hasFiles && (
           <p className="flex items-center gap-2 text-muted-foreground text-xs">
             <ArchiveRestoreIcon className="size-3.5 shrink-0" aria-hidden />
@@ -86,9 +91,7 @@ export function RecycleConfirmationDialog({
             onClick={onConfirm}
           >
             {isRecycling ? <LoaderCircleIcon className="animate-spin" /> : <Trash2Icon />}
-            {isRecycling
-              ? "Moving…"
-              : `Move ${pluralize(fileCount, "file", "files")} to Recycle Bin`}
+            {isRecycling ? "Moving…" : scopeText?.confirmLabel}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

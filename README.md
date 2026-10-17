@@ -26,6 +26,7 @@ A fast, good-looking disk space explorer for Windows with a built-in duplicate f
   app starts and kept in memory.
 - Duplicate finder for images, videos, audio, PDFs, Office documents and archives, with size grouping, partial hashing and BLAKE3 full hashing.
 - Keep rules (oldest, newest, preferred folder, shortest path) and a review screen with shell thumbnails.
+- Move duplicates to the Recycle Bin one file at a time, one group at a time, or every marked copy at once, always after a confirmation that lists exactly what moves.
 - Everything destructive goes to the Recycle Bin and is undoable. Cloud placeholder files are never downloaded.
 - Dark and light themes, reduced-motion support, keyboard shortcuts (press `?` in the app).
 

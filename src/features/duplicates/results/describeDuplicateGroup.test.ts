@@ -39,6 +39,13 @@ describe("describeDuplicateGroup", () => {
     expect(description.removalText).toBe("2 copies to remove");
   });
 
+  it("labels the group's recycle button with the marked copies only", () => {
+    const description = describeDuplicateGroup(group, now);
+    expect(description.markedForRemovalCount).toBe(2);
+    expect(description.recycleMarkedButtonText).toBe("Move 2 marked (4.0 MB) to Recycle Bin");
+    expect(description.canRecycleSingleFile).toBe(true);
+  });
+
   it("describes each copy with name, folder, date and category", () => {
     const [firstFile] = describeDuplicateGroup(group, now).files;
     expect(firstFile).toMatchObject({

@@ -74,8 +74,10 @@ export function totalBytesOf(files: readonly FileToRemove[]): number {
   return files.reduce((total, file) => total + file.fileSize, 0);
 }
 
-/** The label of the footer button: "Move 12 files (3.4 GB) to Recycle Bin". */
+/** The label of the footer button: "Move all 12 marked files (3.4 GB) to Recycle Bin". */
 export function describeRecycleButton(fileCount: number, readableSize: string): string {
-  const fileNoun = fileCount === 1 ? "file" : "files";
-  return `Move ${fileCount.toLocaleString("en-US")} ${fileNoun} (${readableSize}) to Recycle Bin`;
+  if (fileCount === 1) {
+    return `Move 1 marked file (${readableSize}) to Recycle Bin`;
+  }
+  return `Move all ${fileCount.toLocaleString("en-US")} marked files (${readableSize}) to Recycle Bin`;
 }

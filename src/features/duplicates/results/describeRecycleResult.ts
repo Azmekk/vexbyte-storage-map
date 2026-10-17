@@ -59,7 +59,11 @@ export function describeRecycleToast(result: DuplicateRecycleResult): RecycleToa
   }
 
   const title = `Moved ${pluralize(result.moved.length, "file", "files")} to the Recycle Bin`;
-  const freedText = `Freed ${formatBytesAsReadableSize(result.bytesFreed)}. You can restore them from the Recycle Bin.`;
+  const restoreText =
+    result.moved.length === 1
+      ? "You can restore it from the Recycle Bin."
+      : "You can restore them from the Recycle Bin.";
+  const freedText = `Freed ${formatBytesAsReadableSize(result.bytesFreed)}. ${restoreText}`;
 
   return {
     kind: skippedCount > 0 ? "warning" : "success",

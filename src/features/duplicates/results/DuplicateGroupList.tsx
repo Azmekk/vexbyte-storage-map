@@ -13,6 +13,8 @@ type DuplicateGroupListProps = {
   onToggleKeep: (group: DuplicateGroup, path: string) => void;
   onReveal: (path: string) => void;
   onOpen: (path: string) => void;
+  onRecycleFile: (group: DuplicateGroup, path: string) => void;
+  onRecycleGroup: (group: DuplicateGroup) => void;
 };
 
 export function DuplicateGroupList({
@@ -25,6 +27,8 @@ export function DuplicateGroupList({
   onToggleKeep,
   onReveal,
   onOpen,
+  onRecycleFile,
+  onRecycleGroup,
 }: DuplicateGroupListProps) {
   const { scrollElementRef, virtualizer, virtualItems } = useGroupListVirtualizer({
     groupCount,
@@ -66,6 +70,8 @@ export function DuplicateGroupList({
                     onToggleKeep={onToggleKeep}
                     onReveal={onReveal}
                     onOpen={onOpen}
+                    onRecycleFile={onRecycleFile}
+                    onRecycleGroup={onRecycleGroup}
                   />
                 )}
               </div>

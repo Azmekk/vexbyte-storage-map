@@ -10,7 +10,14 @@ import type {
 } from "@/lib/backend/generated";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
 import { describeRecycleToast, hasSkippedFiles } from "./describeRecycleResult";
+import type { RecycleScope } from "./describeRecycleScope";
 import { groupIdsLeavingAfterMove } from "./groupPageCache";
+import { isGroupWouldHaveNoKeptFileError } from "./isGroupWouldHaveNoKeptFileError";
+import {
+  groupRecycleRequest,
+  type RecycleRequest,
+  singleFileRecycleRequest,
+} from "./recycleRequests";
 import { collectFilesToRemove, type FileToRemove, totalBytesOf } from "./selectionSummary";
 import type { UseDuplicateGroupsPageResult } from "./useDuplicateGroupsPage";
 
@@ -19,19 +26,31 @@ const ALL_GROUPS_CHUNK_SIZE = 500;
 /** Long enough for the leaving cards' exit animation to finish before the list reflows. */
 const LEAVING_ANIMATION_MILLISECONDS = 220;
 
+const ALL_MARKED_SCOPE: RecycleScope = { kind: "allMarked" };
+
 export type RecycleConfirmationState =
   | { status: "closed" }
-  | { status: "loading" }
-  | { status: "error"; errorMessage: string }
-  | { status: "ready"; filesToRemove: FileToRemove[]; totalBytes: number }
-  | { status: "recycling"; filesToRemove: FileToRemove[]; totalBytes: number };
+  | { status: "loading"; scope: RecycleScope }
+  | { status: "error"; scope: RecycleScope; errorMessage: string }
+  | { status: "ready"; scope: RecycleScope; filesToRemove: FileToRemove[]; totalBytes: number }
+  | {
+      status: "recycling";
+      scope: RecycleScope;
+      filesToRemove: FileToRemove[];
+      totalBytes: number;
+    };
 
 export type UseRecycleDuplicatesResult = {
   confirmation: RecycleConfirmationState;
   leavingGroupIds: ReadonlySet<DuplicateGroupId>;
   /** The last recycle's skipped files, until dismissed. */
   skippedFilesResult: DuplicateRecycleResult | null;
+  /** Opens the dialog for every copy marked Remove, across all groups. */
   openConfirmation: () => void;
+  /** Opens the dialog for one copy, whatever its Keep/Remove choice. */
+  openFileConfirmation: (group: DuplicateGroup, path: string) => void;
+  /** Opens the dialog for the copies of one group marked Remove. */
+  openGroupConfirmation: (group: DuplicateGroup) => void;
   closeConfirmation: () => void;
   confirmRecycle: () => void;
   dismissSkippedFiles: () => void;
@@ -64,9 +83,31 @@ function waitMilliseconds(milliseconds: number): Promise<void> {
   });
 }
 
+function showRecycleToast(result: DuplicateRecycleResult): void {
+  const recycleToast = describeRecycleToast(result);
+  const toastOptions = { description: recycleToast.description ?? undefined };
+
+  if (recycleToast.kind === "success") {
+    toast.success(recycleToast.title, toastOptions);
+  } else if (recycleToast.kind === "warning") {
+    toast.warning(recycleToast.title, toastOptions);
+  } else {
+    toast.error(recycleToast.title, toastOptions);
+  }
+}
+
+function showRecycleErrorToast(error: unknown): void {
+  toast.error("Nothing was moved to the Recycle Bin", {
+    description: isGroupWouldHaveNoKeptFileError(error)
+      ? "A group must keep at least one copy. Keep another copy, then try again."
+      : readableErrorMessage(error),
+  });
+}
+
 /**
- * The "Move to Recycle Bin" flow: list every copy marked for removal for the confirmation
- * dialog, move them on confirm, animate emptied groups out and refetch the list.
+ * The "Move to Recycle Bin" flows: one copy, the marked copies of one group, or every marked
+ * copy. Lists the files for the confirmation dialog, moves exactly those on confirm, animates
+ * emptied groups out and refetches the list.
  */
 export function useRecycleDuplicates(
   searchId: DuplicateSearchId,
@@ -81,25 +122,62 @@ export function useRecycleDuplicates(
   const { pages, refreshLoadedPages } = groupsPage;
 
   const openConfirmation = useCallback(() => {
-    setConfirmation({ status: "loading" });
+    setConfirmation({ status: "loading", scope: ALL_MARKED_SCOPE });
 
     fetchAllGroups(searchId, sortOrder)
       .then((allGroups) => {
         const filesToRemove = collectFilesToRemove(allGroups);
         setConfirmation((current) =>
           current.status === "loading"
-            ? { status: "ready", filesToRemove, totalBytes: totalBytesOf(filesToRemove) }
+            ? {
+                status: "ready",
+                scope: ALL_MARKED_SCOPE,
+                filesToRemove,
+                totalBytes: totalBytesOf(filesToRemove),
+              }
             : current,
         );
       })
       .catch((error: unknown) => {
         setConfirmation((current) =>
           current.status === "loading"
-            ? { status: "error", errorMessage: readableErrorMessage(error) }
+            ? {
+                status: "error",
+                scope: ALL_MARKED_SCOPE,
+                errorMessage: readableErrorMessage(error),
+              }
             : current,
         );
       });
   }, [searchId, sortOrder]);
+
+  const openRequestConfirmation = useCallback((request: RecycleRequest | null) => {
+    if (request === null) {
+      return;
+    }
+
+    setConfirmation((current) =>
+      current.status === "closed"
+        ? {
+            status: "ready",
+            scope: request.scope,
+            filesToRemove: request.filesToRemove,
+            totalBytes: totalBytesOf(request.filesToRemove),
+          }
+        : current,
+    );
+  }, []);
+
+  const openFileConfirmation = useCallback(
+    (group: DuplicateGroup, path: string) =>
+      openRequestConfirmation(singleFileRecycleRequest(group, path)),
+    [openRequestConfirmation],
+  );
+
+  const openGroupConfirmation = useCallback(
+    (group: DuplicateGroup) => openRequestConfirmation(groupRecycleRequest(group)),
+    [openRequestConfirmation],
+  );
 
   const closeConfirmation = useCallback(() => {
     setConfirmation((current) => (current.status === "recycling" ? current : { status: "closed" }));
@@ -110,8 +188,8 @@ export function useRecycleDuplicates(
       return;
     }
 
-    const { filesToRemove, totalBytes } = confirmation;
-    setConfirmation({ status: "recycling", filesToRemove, totalBytes });
+    const { scope, filesToRemove, totalBytes } = confirmation;
+    setConfirmation({ status: "recycling", scope, filesToRemove, totalBytes });
 
     const recycleAndRefresh = async () => {
       try {
@@ -119,27 +197,17 @@ export function useRecycleDuplicates(
           searchId,
           filesToRemove.map((file) => file.path),
         );
-        const recycleToast = describeRecycleToast(result);
-        const toastOptions = { description: recycleToast.description ?? undefined };
 
         setConfirmation({ status: "closed" });
         setSkippedFilesResult(hasSkippedFiles(result) ? result : null);
-        if (recycleToast.kind === "success") {
-          toast.success(recycleToast.title, toastOptions);
-        } else if (recycleToast.kind === "warning") {
-          toast.warning(recycleToast.title, toastOptions);
-        } else {
-          toast.error(recycleToast.title, toastOptions);
-        }
+        showRecycleToast(result);
 
         setLeavingGroupIds(groupIdsLeavingAfterMove(pages, result.moved));
         await waitMilliseconds(LEAVING_ANIMATION_MILLISECONDS);
         await refreshLoadedPages();
       } catch (error) {
         setConfirmation({ status: "closed" });
-        toast.error("Nothing was moved to the Recycle Bin", {
-          description: readableErrorMessage(error),
-        });
+        showRecycleErrorToast(error);
         await refreshLoadedPages();
       } finally {
         setLeavingGroupIds(new Set());
@@ -156,6 +224,8 @@ export function useRecycleDuplicates(
     leavingGroupIds,
     skippedFilesResult,
     openConfirmation,
+    openFileConfirmation,
+    openGroupConfirmation,
     closeConfirmation,
     confirmRecycle,
     dismissSkippedFiles,

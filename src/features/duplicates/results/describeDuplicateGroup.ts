@@ -6,6 +6,8 @@ import { pluralize } from "../formatting/pluralize";
 import { splitFilePath } from "../paths/splitFilePath";
 import { truncatePathMiddle } from "../paths/truncatePathMiddle";
 import { fileCategoryForPath } from "../setup/fileCategoryOptions";
+import { describeGroupRecycleButton } from "./describeRecycleScope";
+import { canRecycleSingleFile } from "./recycleRequests";
 
 const FOLDER_PATH_DISPLAY_LENGTH = 64;
 
@@ -24,6 +26,12 @@ export type DuplicateGroupDescription = {
   copiesText: string;
   wastedText: string;
   removalText: string;
+  /** Copies marked Remove in this group. */
+  markedForRemovalCount: number;
+  /** The label of the group's "Move N marked (X) to Recycle Bin" button. */
+  recycleMarkedButtonText: string;
+  /** Whether single copies of this group may be moved to the Recycle Bin. */
+  canRecycleSingleFile: boolean;
   files: DuplicateFileDescription[];
 };
 
@@ -59,6 +67,12 @@ export function describeDuplicateGroup(
       removalCount === 0
         ? "Keeping every copy"
         : `${pluralize(removalCount, "copy", "copies")} to remove`,
+    markedForRemovalCount: removalCount,
+    recycleMarkedButtonText: describeGroupRecycleButton(
+      removalCount,
+      formatBytesAsReadableSize(removalCount * group.fileSize),
+    ),
+    canRecycleSingleFile: canRecycleSingleFile(group),
     files: group.files.map((file) => describeDuplicateFile(file, nowUnixMilliseconds)),
   };
 }

@@ -123,6 +123,8 @@ export function DuplicateResultsStep({
           onToggleKeep={results.toggleFileKeep}
           onReveal={results.revealFile}
           onOpen={results.openFile}
+          onRecycleFile={recycle.openFileConfirmation}
+          onRecycleGroup={recycle.openGroupConfirmation}
         />
       )}
 

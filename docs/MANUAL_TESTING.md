@@ -169,15 +169,32 @@ Needs a spinning USB hard disk with some photos or videos on it.
 3. Choose **Keep the one in a folder…** and pick `Backup\Photos`.
    - A copy from that folder becomes the kept one. The selector shows the folder with a
      **Change** button; switching to another rule and back does not ask for the folder again.
-4. Click **Move 2 files (4 MB) to Recycle Bin**.
+4. Click **Move all 2 marked files (4.0 MB) to Recycle Bin** in the footer.
    - The dialog lists both files with their paths. Click **Cancel**: nothing moved.
-5. Click it again and confirm.
-   - A toast reports 4 MB freed; the group animates out; "No duplicates left" appears.
-6. Files that change after the search are protected: restore the copies (step 7), run the search
-   again, then change one of the files marked **Remove** before confirming the move, for example
-   `Add-Content "$fixture\Backup\Photos\IMG_0001 (copy).jpg" "x"`.
-   - That file is skipped and listed as changed since the search; the others move.
-7. Restore from the Recycle Bin as in section 7 and check the copies are back in place.
+5. Open the single-file confirmation three ways and **Cancel** each time: hover a copy marked
+   **Remove** and click its trash icon (tooltip "Move this file to Recycle Bin"); open the row's
+   **⋮** menu → **Move to Recycle Bin…**; click the row's empty area (or Tab to its toggle) and
+   press `Delete`.
+   - Each time the dialog is titled **Move 1 file (2.0 MB) to Recycle Bin**, lists only that
+     path and says the other 2 copies stay where they are. Nothing moved.
+6. Recycle one file: open it again from the trash icon and confirm.
+   - A toast reports 2.0 MB freed. The row animates out; the group now shows 2 copies and its
+     button reads **Move 1 marked (2.0 MB) to Recycle Bin**; the summary cards and footer update.
+7. Recycle one group: click the group's **Move 1 marked (2.0 MB) to Recycle Bin**.
+   - The dialog lists only that group's marked copy and says the kept copy stays. Confirm: a toast
+     reports 2.0 MB freed; the group animates out; "No duplicates left" appears.
+8. Restore both copies (step 11) and search again. Move the copy marked **Keep** with its trash
+   icon.
+   - The dialog says it is the kept copy and the other 2 copies stay and are marked Keep
+     afterwards. Confirm: only that copy moves; the 2 remaining copies are both **Keep** and the
+     group's button is disabled.
+9. Restore, search again and click the footer button, then confirm.
+   - A toast reports 4.0 MB freed; the group animates out; "No duplicates left" appears.
+10. Files that change after the search are protected: restore the copies (step 11), run the
+    search again, then change one of the files marked **Remove** before confirming the move, for
+    example `Add-Content "$fixture\Backup\Photos\IMG_0001 (copy).jpg" "x"`.
+    - That file is skipped and listed as changed since the search; the others move.
+11. Restore from the Recycle Bin as in section 7 and check the copies are back in place.
 
 ## 8b. Search
 

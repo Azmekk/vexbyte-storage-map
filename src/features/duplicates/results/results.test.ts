@@ -152,8 +152,10 @@ describe("selection summary", () => {
   });
 
   it("labels the recycle button with count and size", () => {
-    expect(describeRecycleButton(1, "2.0 MB")).toBe("Move 1 file (2.0 MB) to Recycle Bin");
-    expect(describeRecycleButton(1204, "3.4 GB")).toBe("Move 1,204 files (3.4 GB) to Recycle Bin");
+    expect(describeRecycleButton(1, "2.0 MB")).toBe("Move 1 marked file (2.0 MB) to Recycle Bin");
+    expect(describeRecycleButton(1204, "3.4 GB")).toBe(
+      "Move all 1,204 marked files (3.4 GB) to Recycle Bin",
+    );
   });
 });
 
@@ -243,6 +245,7 @@ describe("recycle result descriptions", () => {
       }),
     );
     expect(toast.kind).toBe("warning");
+    expect(toast.description).toContain("You can restore it from the Recycle Bin.");
     expect(toast.description).toContain("1 file was skipped.");
   });
 
