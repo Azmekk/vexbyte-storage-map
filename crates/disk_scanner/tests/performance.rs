@@ -9,12 +9,13 @@
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use disk_scanner::file_tree::{DirectoryKey, FileTreeBuilder, NewEntry};
 use disk_scanner::{
     CancellationToken, ChildSortOrder, FileTree, NoProgressReporting, NodeFlags, NodeIndex,
-    NodeKind, ScanMethod, ScanTarget, scan,
+    NodeKind, ParsedQuery, ScanMethod, ScanTarget, SearchSortOrder, VolumeSearchIndex,
+    build_volume_search_index, list_volumes, scan, search_volume_index,
 };
 
 const DIRECTORY_COUNT: u32 = 50_000;
@@ -25,11 +26,18 @@ const EXTENSIONS: [&str; 8] = ["jpg", "txt", "dll", "mp4", "json", "js", "pdf", 
 /// About one million nodes: 50,000 directories in three levels with 19 files each, plus one
 /// directory with 100,000 files.
 fn synthetic_tree() -> FileTree {
+    synthetic_tree_with_directories(DIRECTORY_COUNT)
+}
+
+/// `directory_count` directories in three levels with 19 files each, plus one directory with
+/// 100,000 files: 20 nodes per directory.
+fn synthetic_tree_with_directories(directory_count: u32) -> FileTree {
+    let node_capacity = directory_count as usize * 20 + FILES_IN_LARGEST_DIRECTORY as usize;
     let mut builder =
-        FileTreeBuilder::with_capacity(PathBuf::from("C:\\"), DirectoryKey::new(0), 1_100_000);
+        FileTreeBuilder::with_capacity(PathBuf::from("C:\\"), DirectoryKey::new(0), node_capacity);
     let mut name = String::new();
 
-    for directory in 1..=DIRECTORY_COUNT {
+    for directory in 1..=directory_count {
         let parent = if directory <= 100 { 0 } else { directory / 100 };
         name.clear();
         let _ = write!(name, "folder-{directory}");
@@ -62,7 +70,10 @@ fn synthetic_tree() -> FileTree {
                 directory_key: None,
                 logical_size: size,
                 allocated_size: size.next_multiple_of(4096),
-                modified_time: None,
+                modified_time: Some(
+                    SystemTime::UNIX_EPOCH
+                        + Duration::from_secs(u64::from(file * 13 + directory) * 60),
+                ),
                 flags: NodeFlags::empty(),
                 hard_link_identity: None,
             });
@@ -175,4 +186,162 @@ fn folder_walk_of_the_user_profile() {
         totals.logical_size,
         result.summary.duration_milliseconds
     );
+}
+
+/// Runs `query` once to warm up the thread pool and caches, then measures the median of five
+/// runs and checks it against `target`.
+fn assert_search_time(
+    index: &VolumeSearchIndex,
+    query: &str,
+    sort: SearchSortOrder,
+    target: Duration,
+) {
+    let parsed_query = ParsedQuery::parse(query).unwrap();
+    let _warm_up = search_volume_index(index, &parsed_query, sort, 1_000);
+
+    let mut durations = Vec::new();
+    let mut match_count = 0;
+    for _ in 0..5 {
+        let started_at = Instant::now();
+        match_count = search_volume_index(index, &parsed_query, sort, 1_000).total_match_count;
+        durations.push(started_at.elapsed());
+    }
+    durations.sort_unstable();
+    let median = durations[durations.len() / 2];
+
+    println!(
+        "search {query:<32} {sort:<20?} {median:>10.2?}  {match_count:>9} matches (target {target:?})"
+    );
+    assert!(
+        median <= target,
+        "searching {query:?} took {median:?}, target {target:?}"
+    );
+}
+
+#[test]
+#[ignore = "timing test; run by hand in release mode"]
+fn search_index_meets_the_targets_on_three_million_nodes() {
+    let tree = time(
+        "build 3.1 million node tree",
+        Duration::from_secs(15),
+        || synthetic_tree_with_directories(150_000),
+    );
+    let tree_bytes = tree.estimated_memory_bytes();
+
+    let index = time("prepare the search index", Duration::from_secs(3), || {
+        VolumeSearchIndex::from_file_tree(PathBuf::from("C:\\"), tree, ScanMethod::FolderWalk)
+    });
+    let node_count = index.tree().node_count();
+    let index_bytes = index.estimated_memory_bytes();
+    println!(
+        "{node_count} nodes; tree {} MB, index {} MB ({:.0} bytes per node)",
+        tree_bytes / 1_000_000,
+        index_bytes / 1_000_000,
+        index_bytes as f64 / node_count as f64
+    );
+
+    let substring_target = Duration::from_millis(50);
+    let glob_target = Duration::from_millis(200);
+    assert_search_time(
+        &index,
+        "-4242",
+        SearchSortOrder::NameAscending,
+        substring_target,
+    );
+    assert_search_time(
+        &index,
+        "file-12",
+        SearchSortOrder::SizeDescending,
+        substring_target,
+    );
+    assert_search_time(
+        &index,
+        "jpg",
+        SearchSortOrder::ModifiedDescending,
+        substring_target,
+    );
+    assert_search_time(
+        &index,
+        "file 77 jpg",
+        SearchSortOrder::PathAscending,
+        substring_target,
+    );
+    assert_search_time(
+        &index,
+        "ext:mp4 size:>4mb",
+        SearchSortOrder::SizeDescending,
+        substring_target,
+    );
+    assert_search_time(
+        &index,
+        "*-42?.jpg",
+        SearchSortOrder::NameAscending,
+        glob_target,
+    );
+    assert_search_time(
+        &index,
+        "file-1*",
+        SearchSortOrder::NameAscending,
+        glob_target,
+    );
+    assert_search_time(
+        &index,
+        "folder-12\\",
+        SearchSortOrder::PathAscending,
+        glob_target,
+    );
+    assert_search_time(
+        &index,
+        r"c:\*\folder-9*\*.json",
+        SearchSortOrder::PathAscending,
+        glob_target,
+    );
+}
+
+#[test]
+#[ignore = "builds a search index of every local disk read-only; run by hand in release mode"]
+fn search_index_of_the_local_disks() {
+    for volume in list_volumes().unwrap() {
+        if volume.kind != disk_scanner::VolumeKind::LocalDisk {
+            println!(
+                "{}: skipped ({:?})",
+                volume.mount_point.display(),
+                volume.kind
+            );
+            continue;
+        }
+
+        let started_at = Instant::now();
+        let index =
+            build_volume_search_index(&volume, &NoProgressReporting, &CancellationToken::new())
+                .unwrap();
+        println!(
+            "{}: {} files, {} folders, {:?} with {:?}, about {} MB",
+            volume.mount_point.display(),
+            index.file_count(),
+            index.directory_count(),
+            started_at.elapsed(),
+            index.method(),
+            index.estimated_memory_bytes() / 1_000_000
+        );
+
+        for query in [
+            "dll",
+            "*.jpg",
+            "ext:mp4 size:>100mb",
+            r"windows\system32\ drivers",
+        ] {
+            let parsed_query = ParsedQuery::parse(query).unwrap();
+            let _warm_up =
+                search_volume_index(&index, &parsed_query, SearchSortOrder::NameAscending, 1_000);
+            let started_at = Instant::now();
+            let matches =
+                search_volume_index(&index, &parsed_query, SearchSortOrder::NameAscending, 1_000);
+            println!(
+                "    {query:<32} {:>10.2?}  {} matches",
+                started_at.elapsed(),
+                matches.total_match_count
+            );
+        }
+    }
 }

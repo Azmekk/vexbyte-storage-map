@@ -13,6 +13,8 @@ mod error_details;
 mod events;
 mod platform;
 mod scan_registry;
+mod search_index_builders;
+mod search_index_registry;
 mod startup_arguments;
 
 use app_state::AppState;
@@ -45,6 +47,7 @@ pub fn run() -> Result<(), tauri::Error> {
 
             let local_data_directory = app.path().local_data_dir()?;
             app.manage(AppState::new(&local_data_directory, startup_scan_request));
+            search_index_builders::start_building_all_search_indexes(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())

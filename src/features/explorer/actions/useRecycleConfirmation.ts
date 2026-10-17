@@ -78,7 +78,7 @@ export function useRecycleConfirmation(): RecycleConfirmation {
         const explorer = useExplorerSelectionStore.getState();
         for (const movedItem of movedItems) {
           if (explorer.currentFolder === movedItem.node && movedItem.parent !== null) {
-            explorer.openFolder(movedItem.parent);
+            explorer.navigateToNode(movedItem.parent, { replaceHistory: true });
           }
           if (useExplorerSelectionStore.getState().selectedNode === movedItem.node) {
             useExplorerSelectionStore.getState().selectNode(null);

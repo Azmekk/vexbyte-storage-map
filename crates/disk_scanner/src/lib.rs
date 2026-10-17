@@ -14,6 +14,7 @@ mod mft;
 pub mod scan;
 pub mod scan_method;
 pub mod scan_progress;
+pub mod search_index;
 pub mod volume_kind;
 pub mod volumes;
 
@@ -45,8 +46,15 @@ pub use scan_progress::{
     NoProgressReporting, ScanPhase, ScanProgressReporter, ScanProgressUpdate,
     TopLevelDirectoryProgress,
 };
+pub use search_index::{
+    ParsedQuery, SearchHit, SearchIndexBuildError, SearchMatches, SearchQueryError,
+    SearchSortOrder, VolumeSearchIndex, build_volume_search_index, search_index_scan_method,
+    search_volume_index, search_volume_indexes,
+};
 pub use volume_kind::{
     GOOGLE_DRIVE_VOLUME_SERIAL_NUMBER, VolumeClassificationFacts, VolumeKind, classify_volume,
     volume_kind_for_path,
 };
-pub use volumes::{DriveType, VolumeListError, VolumeSummary, list_volumes};
+pub use volumes::{
+    DriveType, VolumeListError, VolumeSummary, list_volumes, system_volume_mount_point,
+};

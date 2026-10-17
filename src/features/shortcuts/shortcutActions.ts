@@ -1,10 +1,21 @@
 import type { ShortcutKeyPress } from "./shortcutKeyPress";
 
-export type AppShortcutAction = "showShortcuts" | "preventPageReload";
-export type ExplorerShortcutAction = "search" | "goUp" | "rescan" | "closeInspector";
+export type AppShortcutAction = "showShortcuts" | "goToYourDrives" | "preventPageReload";
+export type ExplorerShortcutAction =
+  | "search"
+  | "goUp"
+  | "goBack"
+  | "goForward"
+  | "goToScanRoot"
+  | "rescan"
+  | "closeInspector";
 
 function hasCommandModifier(press: ShortcutKeyPress): boolean {
   return (press.ctrlKey || press.metaKey) && !press.altKey;
+}
+
+function hasOnlyAlt(press: ShortcutKeyPress): boolean {
+  return press.altKey && !press.ctrlKey && !press.metaKey;
 }
 
 function hasNoModifier(press: ShortcutKeyPress): boolean {
@@ -12,8 +23,9 @@ function hasNoModifier(press: ShortcutKeyPress): boolean {
 }
 
 /**
- * Shortcuts that work on every screen: `?` or Ctrl+/ open the list of shortcuts. The WebView's
- * own reload keys are swallowed, since reloading would drop every open scan from the window.
+ * Shortcuts that work on every screen: `?` or Ctrl+/ open the list of shortcuts and Ctrl+H goes
+ * to "Your drives". The WebView's own reload keys are swallowed, since reloading would drop every
+ * open scan from the window.
  */
 export function appShortcutAction(press: ShortcutKeyPress): AppShortcutAction | null {
   if (press.isHandled) {
@@ -24,6 +36,9 @@ export function appShortcutAction(press: ShortcutKeyPress): AppShortcutAction | 
   }
   if (hasCommandModifier(press) && press.key === "/") {
     return "showShortcuts";
+  }
+  if (hasCommandModifier(press) && press.key.toLowerCase() === "h" && !press.isOverlayOpen) {
+    return "goToYourDrives";
   }
   if (press.key === "?" && hasNoModifier(press) && !press.isTyping && !press.isOverlayOpen) {
     return "showShortcuts";
@@ -48,8 +63,14 @@ export function explorerShortcutAction(press: ShortcutKeyPress): ExplorerShortcu
   if ((hasCommandModifier(press) && key === "r") || (press.key === "F5" && hasNoModifier(press))) {
     return "rescan";
   }
-  if (press.altKey && !press.ctrlKey && !press.metaKey && press.key === "ArrowLeft") {
-    return "goUp";
+  if (hasOnlyAlt(press) && press.key === "ArrowLeft") {
+    return "goBack";
+  }
+  if (hasOnlyAlt(press) && press.key === "ArrowRight") {
+    return "goForward";
+  }
+  if (hasOnlyAlt(press) && press.key === "Home") {
+    return "goToScanRoot";
   }
   if (press.isTyping || !hasNoModifier(press)) {
     return null;

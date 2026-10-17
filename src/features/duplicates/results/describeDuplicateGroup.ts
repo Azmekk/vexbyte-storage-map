@@ -1,7 +1,7 @@
 import type { DuplicateFile, DuplicateGroup, FileCategory } from "@/lib/backend/generated";
 import { formatBytesAsReadableSize } from "@/lib/formatting/formatBytesAsReadableSize";
+import { formatRelativeDate } from "@/lib/formatting/formatRelativeDate";
 import { formatAbsoluteDate } from "../formatting/formatAbsoluteDate";
-import { formatRelativeDate } from "../formatting/formatRelativeDate";
 import { pluralize } from "../formatting/pluralize";
 import { splitFilePath } from "../paths/splitFilePath";
 import { truncatePathMiddle } from "../paths/truncatePathMiddle";

@@ -27,7 +27,7 @@ async function runFileAction(failureTitle: string, action: () => Promise<void>):
 
 /** Everything a context menu, the inspector or a list row can do with one item. */
 export function useNodeActions(scanId: ScanId): NodeActions {
-  const openFolder = useExplorerSelectionStore((state) => state.openFolder);
+  const navigateToNode = useExplorerSelectionStore((state) => state.navigateToNode);
   const selectNode = useExplorerSelectionStore((state) => state.selectNode);
   const requestRecycleConfirmation = useRecycleConfirmationStore((state) => state.requestRecycle);
 
@@ -35,7 +35,7 @@ export function useNodeActions(scanId: ScanId): NodeActions {
     () => ({
       exploreFolder: (target) => {
         if (target.kind === "directory") {
-          openFolder(target.node);
+          navigateToNode(target.node);
         }
       },
       openItem: (target) =>
@@ -58,6 +58,6 @@ export function useNodeActions(scanId: ScanId): NodeActions {
       requestRecycle: (target) => requestRecycleConfirmation(scanId, [target.node]),
       selectItem: (node) => selectNode(node),
     }),
-    [scanId, openFolder, selectNode, requestRecycleConfirmation],
+    [scanId, navigateToNode, selectNode, requestRecycleConfirmation],
   );
 }

@@ -48,7 +48,7 @@ export function useTreeTable(
   const selectNode = useExplorerSelectionStore((state) => state.selectNode);
   const toggleFolderExpanded = useExplorerSelectionStore((state) => state.toggleFolderExpanded);
   const setFolderExpanded = useExplorerSelectionStore((state) => state.setFolderExpanded);
-  const openFolder = useExplorerSelectionStore((state) => state.openFolder);
+  const navigateToNode = useExplorerSelectionStore((state) => state.navigateToNode);
   const showMoreChildren = useExplorerSelectionStore((state) => state.showMoreChildren);
   const clearLastExpandedFolder = useExplorerSelectionStore(
     (state) => state.clearLastExpandedFolder,
@@ -126,6 +126,9 @@ export function useTreeTable(
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
       const action = treeKeyboardAction(rows, focusedRowIndex, event.key);
 
       switch (action.kind) {
@@ -141,7 +144,7 @@ export function useTreeTable(
           setFolderExpanded(action.folder, false);
           break;
         case "openFolder":
-          openFolder(action.folder);
+          navigateToNode(action.folder);
           break;
         case "showMore":
           showMoreChildren(action.folder);
@@ -153,8 +156,7 @@ export function useTreeTable(
           if (parentOfShownFolder === null) {
             return;
           }
-          openFolder(parentOfShownFolder);
-          selectNode(shownFolder);
+          navigateToNode(parentOfShownFolder, { selectedNode: shownFolder });
           break;
       }
       event.preventDefault();
@@ -164,10 +166,9 @@ export function useTreeTable(
       focusedRowIndex,
       selectRow,
       setFolderExpanded,
-      openFolder,
+      navigateToNode,
       showMoreChildren,
       parentOfShownFolder,
-      selectNode,
       shownFolder,
       requestRecycle,
       scanId,
@@ -178,11 +179,8 @@ export function useTreeTable(
     if (parentOfShownFolder === null) {
       return null;
     }
-    return () => {
-      openFolder(parentOfShownFolder);
-      selectNode(shownFolder);
-    };
-  }, [parentOfShownFolder, openFolder, selectNode, shownFolder]);
+    return () => navigateToNode(parentOfShownFolder, { selectedNode: shownFolder });
+  }, [parentOfShownFolder, navigateToNode, shownFolder]);
 
   const retryFolder = useCallback(
     (folder: NodeIndex) => scanQueryCache.retry(childrenKey(folder)),
@@ -199,7 +197,7 @@ export function useTreeTable(
     handleKeyDown,
     selectRow,
     toggleFolder: toggleFolderExpanded,
-    openFolder,
+    openFolder: navigateToNode,
     showMoreChildren,
     retryFolder,
   };

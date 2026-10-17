@@ -1,6 +1,15 @@
 import { create } from "zustand";
 import type { ScanId } from "@/lib/backend/scans";
 import type { ChildSortOrder, FileCategory, NodeIndex } from "@/lib/backend/tree";
+import {
+  createNavigationHistory,
+  currentHistoryEntry,
+  goBackInHistory,
+  goForwardInHistory,
+  type NavigationHistory,
+  pushHistoryEntry,
+  replaceCurrentHistoryEntry,
+} from "./history/navigationHistory";
 
 export type VisualizationTab = "treemap" | "sunburst" | "fileTypes" | "largestFiles";
 export type TreemapColorMode = "category" | "depth";
@@ -24,6 +33,13 @@ export function isTreemapColorMode(value: string): value is TreemapColorMode {
 export const DEFAULT_CHILD_PAGE_LIMIT = 300;
 const CHILD_PAGE_LIMIT_STEP = 1000;
 
+export type NavigateToNodeOptions = {
+  /** The item to select in the opened folder; by default nothing (or the current selection). */
+  selectedNode?: NodeIndex | null;
+  /** Corrects the current history entry instead of adding a step (for a folder that is gone). */
+  replaceHistory?: boolean;
+};
+
 type ExplorerSelectionState = {
   scanId: ScanId | null;
   rootNode: NodeIndex | null;
@@ -40,11 +56,15 @@ type ExplorerSelectionState = {
   visualizationTab: VisualizationTab;
   treemapColorMode: TreemapColorMode;
   largestFilesCategory: LargestFilesCategoryFilter;
+  /** Back and forward history of the shown folder, one per scan of this session. */
+  navigationHistories: ReadonlyMap<ScanId, NavigationHistory>;
 
   showScan: (scanId: ScanId, rootNode: NodeIndex) => void;
-  openFolder: (folder: NodeIndex) => void;
+  /** Shows `folder` and records it in the history. Every way of changing folder goes through it. */
+  navigateToNode: (folder: NodeIndex, options?: NavigateToNodeOptions) => void;
+  goBack: () => void;
+  goForward: () => void;
   selectNode: (node: NodeIndex | null) => void;
-  revealNode: (folder: NodeIndex, node: NodeIndex) => void;
   toggleFolderExpanded: (folder: NodeIndex) => void;
   setFolderExpanded: (folder: NodeIndex, isExpanded: boolean) => void;
   showMoreChildren: (folder: NodeIndex) => void;
@@ -60,6 +80,36 @@ type ExplorerSelectionState = {
 const EMPTY_FOLDER_SET: ReadonlySet<NodeIndex> = new Set();
 const EMPTY_LIMIT_MAP: ReadonlyMap<NodeIndex, number> = new Map();
 
+/** The history of the shown scan, or `null` before a scan is shown. */
+export function selectCurrentHistory(state: ExplorerSelectionState): NavigationHistory | null {
+  return state.scanId === null ? null : (state.navigationHistories.get(state.scanId) ?? null);
+}
+
+function withHistory(
+  state: ExplorerSelectionState,
+  history: NavigationHistory,
+): ReadonlyMap<ScanId, NavigationHistory> {
+  const navigationHistories = new Map(state.navigationHistories);
+  if (state.scanId !== null) {
+    navigationHistories.set(state.scanId, history);
+  }
+  return navigationHistories;
+}
+
+function showFolderFromHistory(
+  state: ExplorerSelectionState,
+  history: NavigationHistory,
+): Partial<ExplorerSelectionState> {
+  const folder = currentHistoryEntry(history) ?? state.rootNode;
+  return {
+    navigationHistories: withHistory(state, history),
+    currentFolder: folder,
+    selectedNode: null,
+    expandedFolders: EMPTY_FOLDER_SET,
+    lastExpandedFolder: null,
+  };
+}
+
 /** Where the user is in the explorer of the shown scan. Holds ids and UI state only. */
 export const useExplorerSelectionStore = create<ExplorerSelectionState>((set) => ({
   scanId: null,
@@ -74,44 +124,76 @@ export const useExplorerSelectionStore = create<ExplorerSelectionState>((set) =>
   visualizationTab: "treemap",
   treemapColorMode: "category",
   largestFilesCategory: "all",
+  navigationHistories: new Map(),
 
   showScan: (scanId, rootNode) =>
     set((state) => {
       if (state.scanId === scanId && state.rootNode === rootNode) {
         return state;
       }
+      const navigationHistories = new Map(state.navigationHistories);
+      const savedHistory = navigationHistories.get(scanId);
+      const history = savedHistory ?? createNavigationHistory(rootNode);
+      navigationHistories.set(scanId, history);
       return {
         scanId,
         rootNode,
-        currentFolder: rootNode,
+        currentFolder: currentHistoryEntry(history) ?? rootNode,
         selectedNode: null,
         expandedFolders: EMPTY_FOLDER_SET,
         lastExpandedFolder: null,
         childPageLimits: EMPTY_LIMIT_MAP,
         largestFilesCategory: "all",
+        navigationHistories,
       };
     }),
 
-  openFolder: (folder) =>
-    set((state) =>
-      state.currentFolder === folder
+  navigateToNode: (folder, options = {}) =>
+    set((state) => {
+      const isSameFolder = state.currentFolder === folder;
+      const keptSelection = isSameFolder ? state.selectedNode : null;
+      const selectedNode =
+        options.selectedNode === undefined ? keptSelection : options.selectedNode;
+      const history = selectCurrentHistory(state) ?? createNavigationHistory(folder);
+      const updatedHistory = options.replaceHistory
+        ? replaceCurrentHistoryEntry(history, folder)
+        : pushHistoryEntry(history, folder);
+      const navigationHistories =
+        updatedHistory === history ? state.navigationHistories : withHistory(state, updatedHistory);
+
+      if (isSameFolder) {
+        return state.selectedNode === selectedNode && updatedHistory === history
+          ? state
+          : { selectedNode, navigationHistories };
+      }
+      return {
+        currentFolder: folder,
+        selectedNode,
+        expandedFolders: EMPTY_FOLDER_SET,
+        lastExpandedFolder: null,
+        navigationHistories,
+      };
+    }),
+
+  goBack: () =>
+    set((state) => {
+      const history = selectCurrentHistory(state);
+      const updatedHistory = history === null ? null : goBackInHistory(history);
+      return updatedHistory === null || updatedHistory === history
         ? state
-        : {
-            currentFolder: folder,
-            selectedNode: null,
-            expandedFolders: EMPTY_FOLDER_SET,
-            lastExpandedFolder: null,
-          },
-    ),
+        : showFolderFromHistory(state, updatedHistory);
+    }),
+
+  goForward: () =>
+    set((state) => {
+      const history = selectCurrentHistory(state);
+      const updatedHistory = history === null ? null : goForwardInHistory(history);
+      return updatedHistory === null || updatedHistory === history
+        ? state
+        : showFolderFromHistory(state, updatedHistory);
+    }),
 
   selectNode: (node) => set({ selectedNode: node }),
-
-  revealNode: (folder, node) =>
-    set((state) => ({
-      currentFolder: folder,
-      selectedNode: node,
-      expandedFolders: state.currentFolder === folder ? state.expandedFolders : EMPTY_FOLDER_SET,
-    })),
 
   toggleFolderExpanded: (folder) =>
     set((state) => {

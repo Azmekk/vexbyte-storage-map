@@ -11,7 +11,7 @@ export type ExplorerScreenModel = {
   shownFolder: NodeIndex;
   parentOfShownFolder: NodeIndex | null;
   crumbs: BreadcrumbItem[];
-  openFolder: (folder: NodeIndex) => void;
+  navigateToNode: (folder: NodeIndex) => void;
 };
 
 /** Points the explorer stores at this scan and works out where the user is in its tree. */
@@ -19,7 +19,7 @@ export function useExplorerScreen(scanId: ScanId, result: ScanResult): ExplorerS
   const showScan = useExplorerSelectionStore((state) => state.showScan);
   const boundScanId = useExplorerSelectionStore((state) => state.scanId);
   const currentFolder = useExplorerSelectionStore((state) => state.currentFolder);
-  const openFolder = useExplorerSelectionStore((state) => state.openFolder);
+  const navigateToNode = useExplorerSelectionStore((state) => state.navigateToNode);
 
   useEffect(() => {
     showScan(scanId, result.rootNode);
@@ -34,20 +34,23 @@ export function useExplorerScreen(scanId: ScanId, result: ScanResult): ExplorerS
 
   useEffect(() => {
     if (pathState.status === "error" && isReady && shownFolder !== result.rootNode) {
-      openFolder(result.rootNode);
+      navigateToNode(result.rootNode, { replaceHistory: true });
     }
-  }, [pathState.status, isReady, shownFolder, result.rootNode, openFolder]);
+  }, [pathState.status, isReady, shownFolder, result.rootNode, navigateToNode]);
 
   const parentCrumb = crumbs.length >= 2 ? crumbs[crumbs.length - 2] : undefined;
   const isCrumbTrailCurrent = crumbs.at(-1)?.node === shownFolder;
 
-  const openFolderOfScan = useCallback((folder: NodeIndex) => openFolder(folder), [openFolder]);
+  const navigateToFolder = useCallback(
+    (folder: NodeIndex) => navigateToNode(folder),
+    [navigateToNode],
+  );
 
   return {
     isReady,
     shownFolder,
     parentOfShownFolder: isCrumbTrailCurrent ? (parentCrumb?.node ?? null) : null,
     crumbs,
-    openFolder: openFolderOfScan,
+    navigateToNode: navigateToFolder,
   };
 }

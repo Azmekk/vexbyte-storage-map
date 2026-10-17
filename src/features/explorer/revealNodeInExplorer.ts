@@ -14,11 +14,11 @@ export async function revealNodeInExplorer(scanId: ScanId, node: NodeIndex): Pro
     const explorer = useExplorerSelectionStore.getState();
 
     if (details.kind === "directory" || details.parent === null) {
-      explorer.openFolder(details.node);
+      explorer.navigateToNode(details.node);
       return;
     }
 
-    explorer.revealNode(details.parent, details.node);
+    explorer.navigateToNode(details.parent, { selectedNode: details.node });
   } catch (error) {
     toast.error("Could not show this item", { description: readableErrorMessage(error) });
   }

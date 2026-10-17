@@ -33,8 +33,7 @@ export function VisualizationTabs({
   const setVisualizationTab = useExplorerSelectionStore((state) => state.setVisualizationTab);
   const colorMode = useExplorerSelectionStore((state) => state.treemapColorMode);
   const setColorMode = useExplorerSelectionStore((state) => state.setTreemapColorMode);
-  const openFolder = useExplorerSelectionStore((state) => state.openFolder);
-  const selectNode = useExplorerSelectionStore((state) => state.selectNode);
+  const navigateToNode = useExplorerSelectionStore((state) => state.navigateToNode);
   const theme = usePaletteTheme();
   const isHierarchyTab = visualizationTab === "treemap" || visualizationTab === "sunburst";
 
@@ -59,8 +58,7 @@ export function VisualizationTabs({
               disabled={parentOfShownFolder === null}
               onClick={() => {
                 if (parentOfShownFolder !== null) {
-                  openFolder(parentOfShownFolder);
-                  selectNode(shownFolder);
+                  navigateToNode(parentOfShownFolder, { selectedNode: shownFolder });
                 }
               }}
             >

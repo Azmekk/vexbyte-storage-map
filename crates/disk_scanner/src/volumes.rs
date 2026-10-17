@@ -102,6 +102,12 @@ pub fn list_volumes() -> Result<Vec<VolumeSummary>, VolumeListError> {
     Ok(volumes)
 }
 
+/// The mount point of the volume the operating system runs from, for example `C:\`.
+#[must_use]
+pub fn system_volume_mount_point() -> Option<PathBuf> {
+    platform::system_volume_mount_point()
+}
+
 fn read_volume_summary_or_skip(mount_point: PathBuf) -> Option<VolumeSummary> {
     match platform::query_volume_details(&mount_point) {
         Ok(Some(details)) => Some(volume_summary_from_details(mount_point, details)),

@@ -28,6 +28,11 @@ export type ScanRecord = {
   latestProgress: ScanProgressUpdate | null;
   outcome: ScanOutcome | null;
   result: ScanResult | null;
+  /**
+   * When this window learned that the scan ended, for "Scanned 5 minutes ago". The backend does
+   * not report the time, so a scan that ended before a reload counts from the reload.
+   */
+  endedAtUnixMilliseconds: number | null;
 };
 
 type ScanStoreState = {
@@ -76,6 +81,7 @@ function recordFromOverview(overview: ScanOverview): ScanRecord {
     latestProgress: null,
     outcome,
     result,
+    endedAtUnixMilliseconds: overview.status === "running" ? null : Date.now(),
   };
 }
 
@@ -97,6 +103,7 @@ export const useScanStore = create<ScanStoreState>((set) => ({
         latestProgress: initialProgress,
         outcome: earlyOutcome,
         result: state.scans[scanId]?.result ?? null,
+        endedAtUnixMilliseconds: earlyOutcome === null ? null : Date.now(),
       };
 
       return {
@@ -122,7 +129,12 @@ export const useScanStore = create<ScanStoreState>((set) => ({
           outcomesOfUnregisteredScans: { ...state.outcomesOfUnregisteredScans, [scanId]: outcome },
         };
       }
-      const updatedRecord: ScanRecord = { ...record, outcome, status: statusOfOutcome(outcome) };
+      const updatedRecord: ScanRecord = {
+        ...record,
+        outcome,
+        status: statusOfOutcome(outcome),
+        endedAtUnixMilliseconds: record.endedAtUnixMilliseconds ?? Date.now(),
+      };
       return { scans: { ...state.scans, [scanId]: updatedRecord } };
     }),
 
@@ -132,7 +144,13 @@ export const useScanStore = create<ScanStoreState>((set) => ({
       if (record === undefined) {
         return state;
       }
-      return { scans: { ...state.scans, [scanId]: { ...record, result, status: "finished" } } };
+      const updatedRecord: ScanRecord = {
+        ...record,
+        result,
+        status: "finished",
+        endedAtUnixMilliseconds: record.endedAtUnixMilliseconds ?? Date.now(),
+      };
+      return { scans: { ...state.scans, [scanId]: updatedRecord } };
     }),
 
   updateCurrentTotals: (scanId, totals) =>
@@ -156,9 +174,12 @@ export const useScanStore = create<ScanStoreState>((set) => ({
           (overview.status !== "finished" || existingRecord.result !== null);
 
         if (!isAlreadyUpToDate) {
+          const recordOfOverview = recordFromOverview(overview);
           scans[overview.scanId] = {
-            ...recordFromOverview(overview),
+            ...recordOfOverview,
             latestProgress: existingRecord?.latestProgress ?? null,
+            endedAtUnixMilliseconds:
+              existingRecord?.endedAtUnixMilliseconds ?? recordOfOverview.endedAtUnixMilliseconds,
           };
         }
       }

@@ -5,6 +5,7 @@ use file_actions::ThumbnailCache;
 
 use crate::duplicate_search_registry::DuplicateSearchRegistry;
 use crate::scan_registry::ScanRegistry;
+use crate::search_index_registry::SearchIndexRegistry;
 use crate::startup_arguments::StartupScanRequest;
 
 /// The folder below the user's local app data folder (`%LOCALAPPDATA%` on Windows) that holds
@@ -18,6 +19,8 @@ const THUMBNAIL_FOLDER_NAME: &str = "thumbnails";
 pub struct AppState {
     pub scans: ScanRegistry,
     pub duplicate_searches: DuplicateSearchRegistry,
+    /// The whole-volume indexes of the global file search, built at app start.
+    pub search_indexes: SearchIndexRegistry,
     pub thumbnail_cache: ThumbnailCache,
     pub startup_scan_request: Option<StartupScanRequest>,
     /// Held for the whole of every Recycle Bin action, from the last check to the shell call,
@@ -42,6 +45,7 @@ impl AppState {
         Self {
             scans: ScanRegistry::default(),
             duplicate_searches: DuplicateSearchRegistry::default(),
+            search_indexes: SearchIndexRegistry::default(),
             thumbnail_cache: ThumbnailCache::new(thumbnail_directory),
             startup_scan_request,
             recycle_bin_operations: Arc::new(Mutex::new(())),

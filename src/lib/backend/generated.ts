@@ -112,12 +112,33 @@ export const commands = {
 	/**  The relaunch exists to get the fast scan, so a requested scan always uses it. */
 	method: ScanMethod,
 } | null, ElevationCommandError>(__TAURI_INVOKE("get_startup_scan_request")),
+	/**
+	 *  Every volume's search index state, for the "Warming up search engine" screen. Afterwards
+	 *  listen for `SearchIndexStatusChanged`.
+	 */
+	getSearchIndexStatus: () => typedError<SearchIndexStatus, SearchCommandError>(__TAURI_INVOKE("get_search_index_status")),
+	/**
+	 *  Rebuilds the index of one volume, or of every local volume when `mount_point` is `None`
+	 *  (which also picks up drives connected since the app started). Returns right away; the old
+	 *  index keeps answering searches until the new one replaces it.
+	 */
+	refreshSearchIndex: (mountPoint: string | null) => typedError<null, SearchCommandError>(__TAURI_INVOKE("refresh_search_index", { mountPoint })),
+	/**
+	 *  Searches every indexed volume by name or path (see `docs/SEARCH.md` for the syntax).
+	 *  `limit` is clamped to 1..=10,000. An empty query answers with no results right away.
+	 */
+	searchFiles: (query: string, sort: SearchSortOrder, limit: number) => typedError<SearchResponse, SearchCommandError>(__TAURI_INVOKE("search_files", { query, sort, limit })),
+	/**  Opens an Explorer window with a search result selected. */
+	revealSearchHit: (path: string) => typedError<null, SearchCommandError>(__TAURI_INVOKE("reveal_search_hit", { path })),
+	/**  Opens a search result with its default application, or a folder in Explorer. */
+	openSearchHit: (path: string) => typedError<null, SearchCommandError>(__TAURI_INVOKE("open_search_hit", { path })),
 };
 
 /** Events */
 export const events = {
 	duplicateSearchFinished: makeEvent<DuplicateSearchFinished>("duplicate-search-finished"),
 	scanFinished: makeEvent<ScanFinished>("scan-finished"),
+	searchIndexStatusChanged: makeEvent<SearchIndexStatusChanged>("search-index-status-changed"),
 };
 
 /* Types */
@@ -368,6 +389,17 @@ export type FolderDriveKind = {
 	driveKind: DriveKind,
 };
 
+/**  The finished index that answers queries for a volume. */
+export type IndexSummary = {
+	builtAtUnixMilliseconds: number,
+	fileCount: number,
+	directoryCount: number,
+	method: ScanMethod,
+	/**  From the start of reading the volume until the index was ready. */
+	durationMilliseconds: number,
+	estimatedMemoryBytes: number,
+};
+
 /**
  *  Picks which copy of each group stays. Every rule keeps exactly one copy; the user can then
  *  change any group by hand.
@@ -418,6 +450,20 @@ export type NodeFlagSummary = {
 export type NodeIndex = number;
 
 export type NodeKind = "file" | "directory";
+
+/**  One word for the whole search engine, for the "Warming up search engine" screen. */
+export type OverallIndexStatus = 
+/**
+ *  The volumes are still being listed, or at least one local volume is still being read for
+ *  the first time. Volumes that are ready can already be searched.
+ */
+"warming" | 
+/**  Every local volume can be searched (some may be refreshing). */
+"ready" | 
+/**  Every local volume was tried; some can be searched and some failed. */
+"partiallyReady" | 
+/**  No volume can be searched: every build failed, or there is no local volume. */
+"failed";
 
 export type RecycleFailure = {
 	path: string,
@@ -561,6 +607,60 @@ export type ScanTarget =
 	path: string,
 } }) & { volume?: never };
 
+export type SearchCommandError = { kind: "invalidQuery"; problem: SearchQueryError } | { kind: "volumeNotFound"; mountPoint: string } | { kind: "volumeNotIndexed"; mountPoint: string; reason: SkipReason } | { kind: "pathNotInIndex"; path: string } | { kind: "revealFailed"; path: string; details: string } | { kind: "openFailed"; path: string; details: string } | { kind: "backgroundTaskFailed"; details: string };
+
+/**  One file or folder found by a search. */
+export type SearchHit = {
+	/**  The volume the item is on, for example `C:\`. */
+	volumeMountPoint: string,
+	path: string,
+	name: string,
+	isDirectory: boolean,
+	/**  The file size; for a folder, the total size of everything inside it. */
+	logicalSize: number,
+	modifiedAtUnixMilliseconds: number | null,
+	/**  The file type category by extension; `None` for folders and unknown extensions. */
+	category: FileCategory | null,
+	/**
+	 *  The item's node in that volume's index. Only meaningful together with the volume, and
+	 *  only until the index is rebuilt.
+	 */
+	node: NodeIndex,
+};
+
+export type SearchIndexStatus = {
+	/**  Ordered by mount point. */
+	volumes: VolumeIndexStatus[],
+	overall: OverallIndexStatus,
+};
+
+/**
+ *  Emitted whenever the search index of a volume changes state, and about four times per second
+ *  per volume while one is read. Carries the full status, so the frontend can just replace its
+ *  copy.
+ */
+export type SearchIndexStatusChanged = {
+	status: SearchIndexStatus,
+};
+
+/**  Why a query could not be understood. */
+export type SearchQueryError = { kind: "invalidSizeFilter"; value: string } | { kind: "invalidTypeFilter"; value: string } | { kind: "unsupportedFilter"; filter: string };
+
+/**  The answer to `search_files`. */
+export type SearchResponse = {
+	/**  The best matches in the requested order, at most `limit`. */
+	hits: SearchHit[],
+	/**  Every match on the searched volumes, also those beyond `limit`. */
+	totalMatchCount: number,
+	/**  True when more items matched than `hits` holds. */
+	totalMatchesCapped: boolean,
+	/**  The volumes whose index answered, ordered by mount point. */
+	searchedVolumes: string[],
+	/**  Local volumes not searched because their first index is still being built. */
+	skippedVolumesStillWarming: string[],
+	elapsedMilliseconds: number,
+};
+
 export type SearchResult = {
 	node: NodeIndex,
 	name: string,
@@ -568,6 +668,16 @@ export type SearchResult = {
 	fullPath: string | null,
 	logicalSize: number,
 };
+
+/**  The order of search results. */
+export type SearchSortOrder = "nameAscending" | "sizeDescending" | 
+/**  Newest first; items without a known modification time come last. */
+"modifiedDescending" | "pathAscending";
+
+/**  Why a volume has no search index. */
+export type SkipReason = 
+/**  A streamed cloud drive such as Google Drive for desktop; reading it downloads files. */
+"cloudDrive" | "networkDrive" | "removableDrive" | "opticalDrive" | "ramDisk" | "unknownDriveType";
 
 /**  A scan requested on the command line, for the frontend to start as soon as it loads. */
 export type StartupScanRequest = {
@@ -654,6 +764,23 @@ export type VisualizationNodeKind = "file" | "directory" |
 "smallerItems";
 
 export type VolumeCommandError = { kind: "volumeListFailed"; details: string } | { kind: "backgroundTaskFailed"; details: string };
+
+/**
+ *  What is happening to a volume's index right now. Whether the volume can be searched is told
+ *  by `VolumeIndexStatus::index`, which stays set while a refresh runs or after a refresh failed.
+ */
+export type VolumeIndexState = 
+/**  Waiting for a free build slot. */
+{ kind: "idle" } | { kind: "building"; filesSoFar: number; directoriesSoFar: number; elapsedMilliseconds: number; method: ScanMethod } | { kind: "ready" } | { kind: "failed"; reason: string } | { kind: "skipped"; reason: SkipReason };
+
+export type VolumeIndexStatus = {
+	mountPoint: string,
+	label: string,
+	volumeKind: VolumeKind,
+	state: VolumeIndexState,
+	/**  Set while the volume can be searched. */
+	index: IndexSummary | null,
+};
 
 /**  What a volume really is, which decides whether the app may scan it. */
 export type VolumeKind = "localDisk" | "removable" | "optical" | "network" | "ramDisk" | 

@@ -15,6 +15,7 @@ export const KEYBOARD_SHORTCUT_GROUPS: readonly KeyboardShortcutGroup[] = [
     title: "Anywhere",
     shortcuts: [
       { keyCombinations: [["?"], ["Ctrl", "/"]], description: "Show these shortcuts" },
+      { keyCombinations: [["Ctrl", "H"]], description: "Go to Your drives" },
       { keyCombinations: [["Esc"]], description: "Close a dialog, a menu or the details panel" },
     ],
   },
@@ -22,7 +23,16 @@ export const KEYBOARD_SHORTCUT_GROUPS: readonly KeyboardShortcutGroup[] = [
     title: "Exploring a scan",
     shortcuts: [
       { keyCombinations: [["Ctrl", "K"]], description: "Search names in the scan" },
-      { keyCombinations: [["Backspace"], ["Alt", "←"]], description: "Go up one folder" },
+      {
+        keyCombinations: [["Alt", "←"], ["Mouse back"]],
+        description: "Go back to the previous folder",
+      },
+      {
+        keyCombinations: [["Alt", "→"], ["Mouse forward"]],
+        description: "Go forward again",
+      },
+      { keyCombinations: [["Backspace"]], description: "Go up one folder" },
+      { keyCombinations: [["Alt", "Home"]], description: "Go to the top of the scan" },
       { keyCombinations: [["Ctrl", "R"], ["F5"]], description: "Scan the same place again" },
     ],
   },

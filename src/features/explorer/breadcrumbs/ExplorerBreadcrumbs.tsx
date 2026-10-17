@@ -15,27 +15,62 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { BreadcrumbItem as BreadcrumbData, NodeIndex } from "@/lib/backend/tree";
-import { buildBreadcrumbTrail } from "./buildBreadcrumbTrail";
+import { type BreadcrumbTrailEntry, buildBreadcrumbTrail } from "./buildBreadcrumbTrail";
+import { ScanRootChip } from "./ScanRootChip";
+import { YourDrivesButton } from "./YourDrivesButton";
 
 const MAXIMUM_VISIBLE_CRUMBS = 4;
 
-type ExplorerBreadcrumbsProps = {
-  crumbs: BreadcrumbData[];
-  onOpenFolder: (folder: NodeIndex) => void;
+function breadcrumbItemClassName(isScanRoot: boolean, entry: BreadcrumbTrailEntry): string {
+  if (isScanRoot || entry.kind === "collapsed") {
+    return "shrink-0";
+  }
+  return entry.isCurrent ? "min-w-0" : "min-w-12";
+}
+
+export type ScanRootDescription = {
+  /** `C:` for a drive, the folder name for a folder. */
+  label: string;
+  isVolume: boolean;
 };
 
-export function ExplorerBreadcrumbs({ crumbs, onOpenFolder }: ExplorerBreadcrumbsProps) {
+type ExplorerBreadcrumbsProps = {
+  crumbs: BreadcrumbData[];
+  scanRoot: ScanRootDescription;
+  onOpenFolder: (folder: NodeIndex) => void;
+  onGoToYourDrives: () => void;
+};
+
+/** Your drives, then the scanned drive or folder as a chip, then the folders below it. */
+export function ExplorerBreadcrumbs({
+  crumbs,
+  scanRoot,
+  onOpenFolder,
+  onGoToYourDrives,
+}: ExplorerBreadcrumbsProps) {
   const trail = buildBreadcrumbTrail(crumbs, MAXIMUM_VISIBLE_CRUMBS);
 
   return (
     <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap">
+      <BreadcrumbList className="flex-nowrap gap-1">
+        <BreadcrumbItem className="shrink-0">
+          <YourDrivesButton onSelect={onGoToYourDrives} />
+        </BreadcrumbItem>
         {trail.map((entry, entryIndex) => {
           const entryKey = entry.kind === "crumb" ? `crumb-${entry.crumb.node}` : "collapsed";
+          const isScanRoot = entryIndex === 0 && entry.kind === "crumb";
           return (
             <Fragment key={entryKey}>
-              {entryIndex > 0 && <BreadcrumbSeparator />}
-              <BreadcrumbItem className="min-w-0">
+              <BreadcrumbSeparator />
+              <BreadcrumbItem className={breadcrumbItemClassName(isScanRoot, entry)}>
+                {isScanRoot && (
+                  <ScanRootChip
+                    label={scanRoot.label}
+                    isVolume={scanRoot.isVolume}
+                    isCurrent={entry.isCurrent}
+                    onSelect={() => onOpenFolder(entry.crumb.node)}
+                  />
+                )}
                 {entry.kind === "collapsed" && (
                   <DropdownMenu>
                     <DropdownMenuTrigger
@@ -56,12 +91,12 @@ export function ExplorerBreadcrumbs({ crumbs, onOpenFolder }: ExplorerBreadcrumb
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                {entry.kind === "crumb" && entry.isCurrent && (
+                {!isScanRoot && entry.kind === "crumb" && entry.isCurrent && (
                   <BreadcrumbPage className="truncate font-medium">
                     {entry.crumb.name}
                   </BreadcrumbPage>
                 )}
-                {entry.kind === "crumb" && !entry.isCurrent && (
+                {!isScanRoot && entry.kind === "crumb" && !entry.isCurrent && (
                   <BreadcrumbLink asChild>
                     <button
                       type="button"

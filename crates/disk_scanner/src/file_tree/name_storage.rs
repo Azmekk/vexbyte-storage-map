@@ -108,6 +108,11 @@ impl NameStorage {
         self.extensions.get(id.as_usize()).map(AsRef::as_ref)
     }
 
+    /// The id of an already interned extension, given in lowercase without its dot.
+    pub(crate) fn interned_extension_id(&self, lowercase_extension: &str) -> Option<ExtensionId> {
+        self.extension_ids_by_text.get(lowercase_extension).copied()
+    }
+
     pub(crate) fn extension_category(&self, id: ExtensionId) -> Option<FileCategory> {
         self.extension_categories
             .get(id.as_usize())
@@ -135,10 +140,16 @@ fn extension_of(file_name: &str) -> Option<&str> {
     let dot_position = file_name.rfind('.')?;
     let extension = &file_name[dot_position + 1..];
 
-    let is_plausible_extension = !extension.is_empty()
+    is_plausible_extension(extension).then_some(extension)
+}
+
+/// True when `extension` (without its dot) is something `NameStorage` interns as an extension
+/// rather than treating it as part of the name.
+pub(crate) fn is_plausible_extension(extension: &str) -> bool {
+    !extension.is_empty()
         && extension.chars().count() <= MAXIMUM_EXTENSION_LENGTH
-        && !extension.contains(' ');
-    is_plausible_extension.then_some(extension)
+        && !extension.contains(' ')
+        && !extension.contains('.')
 }
 
 #[cfg(test)]

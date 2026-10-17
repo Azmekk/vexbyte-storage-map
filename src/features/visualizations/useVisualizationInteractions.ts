@@ -19,7 +19,7 @@ export type VisualizationInteractions = {
 /** What clicks and right-clicks on treemap blocks and sunburst segments do. */
 export function useVisualizationInteractions(scanId: ScanId): VisualizationInteractions {
   const actions = useNodeActions(scanId);
-  const openFolder = useExplorerSelectionStore((state) => state.openFolder);
+  const navigateToNode = useExplorerSelectionStore((state) => state.navigateToNode);
   const selectNode = useExplorerSelectionStore((state) => state.selectNode);
   const [contextTarget, setContextTarget] = useState<NodeActionTarget | null>(null);
 
@@ -29,12 +29,12 @@ export function useVisualizationInteractions(scanId: ScanId): VisualizationInter
         return;
       }
       if (item.kind === "directory") {
-        openFolder(item.node);
+        navigateToNode(item.node);
       } else {
         selectNode(item.node);
       }
     },
-    [openFolder, selectNode],
+    [navigateToNode, selectNode],
   );
 
   const prepareContextMenu = useCallback(

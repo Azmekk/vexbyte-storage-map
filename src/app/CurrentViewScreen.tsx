@@ -31,7 +31,7 @@ export function CurrentViewScreen({ volumesState, onRetryLoadingVolumes }: Curre
         {currentView.kind === "home" && (
           <>
             <TopBar>
-              <TopBarTitle title="Home" />
+              <TopBarTitle title="Your drives" />
             </TopBar>
             <ScrollArea className="min-h-0 flex-1">
               <HomeScreen

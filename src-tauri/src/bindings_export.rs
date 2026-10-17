@@ -7,10 +7,10 @@ use tauri::Wry;
 use tauri_specta::{Builder, collect_commands, collect_events};
 
 use crate::commands::{
-    duplicate_commands, elevation_commands, file_action_commands, scan_commands, tree_commands,
-    volume_commands,
+    duplicate_commands, elevation_commands, file_action_commands, scan_commands, search_commands,
+    tree_commands, volume_commands,
 };
-use crate::events::{DuplicateSearchFinished, ScanFinished};
+use crate::events::{DuplicateSearchFinished, ScanFinished, SearchIndexStatusChanged};
 
 /// Where the generated bindings live in the frontend. Built from the manifest directory so the
 /// export works no matter which directory the app or the test runs from. Release builds never
@@ -57,8 +57,17 @@ pub fn create_bindings_builder() -> Builder<Wry> {
             elevation_commands::get_elevation_status,
             elevation_commands::relaunch_elevated,
             elevation_commands::get_startup_scan_request,
+            search_commands::get_search_index_status,
+            search_commands::refresh_search_index,
+            search_commands::search_files,
+            search_commands::reveal_search_hit,
+            search_commands::open_search_hit,
         ])
-        .events(collect_events![ScanFinished, DuplicateSearchFinished])
+        .events(collect_events![
+            ScanFinished,
+            DuplicateSearchFinished,
+            SearchIndexStatusChanged
+        ])
         // Byte counts are u64. JavaScript numbers hold integers exactly up to 2^53 bytes (8 PiB),
         // far above any single volume, so plain numbers are used instead of BigInt.
         .dangerously_cast_bigints_to_number()

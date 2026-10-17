@@ -19,7 +19,7 @@ type SunburstViewProps = {
 export function SunburstView({ scanId, subtree, parentOfShownFolder }: SunburstViewProps) {
   const colorMode = useExplorerSelectionStore((state) => state.treemapColorMode);
   const selectedNode = useExplorerSelectionStore((state) => state.selectedNode);
-  const openFolder = useExplorerSelectionStore((state) => state.openFolder);
+  const navigateToNode = useExplorerSelectionStore((state) => state.navigateToNode);
   const theme = usePaletteTheme();
   const canvas = useSunburstCanvas({ subtree, colorMode, theme, selectedNode });
   const interactions = useVisualizationInteractions(scanId);
@@ -54,7 +54,7 @@ export function SunburstView({ scanId, subtree, parentOfShownFolder }: SunburstV
         <button
           type="button"
           disabled={parentOfShownFolder === null}
-          onClick={() => parentOfShownFolder !== null && openFolder(parentOfShownFolder)}
+          onClick={() => parentOfShownFolder !== null && navigateToNode(parentOfShownFolder)}
           aria-label={parentOfShownFolder === null ? subtree.name : `Go up from ${subtree.name}`}
           className="absolute flex flex-col items-center justify-center rounded-full p-3 text-center outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring disabled:hover:bg-transparent"
           style={{

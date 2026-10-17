@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useNavigationStore } from "@/app/useNavigationStore";
 import { appShortcutAction } from "./shortcutActions";
 import { readShortcutKeyPress } from "./shortcutKeyPress";
 import { useKeyboardShortcutsDialogStore } from "./useKeyboardShortcutsDialogStore";
@@ -16,6 +17,9 @@ export function useAppShortcuts(): void {
       event.preventDefault();
       if (action === "showShortcuts") {
         setShortcutsDialogOpen(true);
+      }
+      if (action === "goToYourDrives") {
+        useNavigationStore.getState().navigateHome();
       }
     };
 

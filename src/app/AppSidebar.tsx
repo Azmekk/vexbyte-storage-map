@@ -1,4 +1,4 @@
-import { CopyIcon, FolderSearchIcon } from "lucide-react";
+import { CopyIcon, FolderSearchIcon, HouseIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -49,6 +49,23 @@ export function AppSidebar({ volumesState }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent>
+        <SidebarGroup className="pb-0">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Your drives (Ctrl+H)"
+                  isActive={currentViewKind === "home"}
+                  onClick={navigateHome}
+                >
+                  <HouseIcon />
+                  <span>Your drives</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel>Drives</SidebarGroupLabel>
           <SidebarGroupContent>

@@ -11,13 +11,14 @@ mod node_removal;
 mod node_search;
 mod subtree_extraction;
 #[cfg(test)]
-mod test_trees;
+pub(crate) mod test_trees;
 mod tree_arena;
 mod tree_queries;
 mod tree_query_error;
 mod visualization_subtree;
 
 pub use file_tree_builder::{DirectoryKey, FileTreeBuilder, NewEntry};
+pub(crate) use name_storage::{ExtensionId, is_plausible_extension};
 pub use node::{Node, NodeFlags, NodeIndex, NodeKind};
 pub use node_flag_summary::NodeFlagSummary;
 pub use node_removal::RemovalSummary;

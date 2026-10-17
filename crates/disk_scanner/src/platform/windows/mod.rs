@@ -13,6 +13,7 @@ mod owned_handle;
 mod path_encoding;
 mod process_elevation;
 mod raw_volume_reader;
+mod system_volume;
 mod volume_details;
 mod volume_information;
 mod volume_mount_points;
@@ -22,6 +23,7 @@ pub(crate) use directory_listing::list_directory;
 pub(crate) use media_error_prompt_suppression::MediaErrorPromptSuppression;
 pub(crate) use process_elevation::is_process_elevated;
 pub(crate) use raw_volume_reader::RawVolumeReader;
+pub(crate) use system_volume::system_volume_mount_point;
 pub(crate) use volume_details::{
     file_system_supports_fast_scan, is_volume_not_ready_error, query_volume_details,
     volume_mount_point_for_path,
