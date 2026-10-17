@@ -43,6 +43,7 @@ export function useTreeTable(
   const expandedFolders = useExplorerSelectionStore((state) => state.expandedFolders);
   const childPageLimits = useExplorerSelectionStore((state) => state.childPageLimits);
   const sortOrder = useExplorerSelectionStore((state) => state.sortOrder);
+  const onlineOnly = useExplorerSelectionStore((state) => state.onlineOnlyVisibility);
   const selectedNode = useExplorerSelectionStore((state) => state.selectedNode);
   const lastExpandedFolder = useExplorerSelectionStore((state) => state.lastExpandedFolder);
   const selectNode = useExplorerSelectionStore((state) => state.selectNode);
@@ -64,8 +65,9 @@ export function useTreeTable(
         folder,
         sortOrder,
         childPageLimits.get(folder) ?? DEFAULT_CHILD_PAGE_LIMIT,
+        onlineOnly,
       ),
-    [scanId, sortOrder, childPageLimits],
+    [scanId, sortOrder, childPageLimits, onlineOnly],
   );
 
   const flattenedTree = useMemo(() => {
@@ -81,19 +83,17 @@ export function useTreeTable(
   const isEmptyFolder = rows.length === 0 || (rows.length === 1 && rows[0]?.kind === "emptyFolder");
   const shownFolderDetails = useNodeDetails(scanId, isEmptyFolder ? shownFolder : null).state;
   const emptyFolder = isEmptyFolder
-    ? describeEmptyFolder(
-        shownFolderDetails.status === "success" ? shownFolderDetails.data.flags : null,
-      )
+    ? describeEmptyFolder(shownFolderDetails.status === "success" ? shownFolderDetails.data : null)
     : null;
 
   useEffect(() => {
     for (const folder of foldersToLoad) {
       const limit = childPageLimits.get(folder) ?? DEFAULT_CHILD_PAGE_LIMIT;
       scanQueryCache.ensureLoaded(childrenKey(folder), scanId, () =>
-        getChildren(scanId, folder, sortOrder, 0, limit),
+        getChildren(scanId, folder, sortOrder, 0, limit, onlineOnly),
       );
     }
-  }, [foldersToLoad, childrenKey, childPageLimits, scanId, sortOrder]);
+  }, [foldersToLoad, childrenKey, childPageLimits, scanId, sortOrder, onlineOnly]);
 
   useEffect(() => {
     if (lastExpandedFolder === null) {

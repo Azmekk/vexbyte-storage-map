@@ -25,20 +25,23 @@ export const commands = {
 	listScans: () => typedError<ScanOverview[], ScanCommandError>(__TAURI_INVOKE("list_scans")),
 	/**  Forgets a scan and frees the memory its tree uses. A running scan is cancelled first. */
 	discardScan: (scanId: ScanId) => typedError<null, ScanCommandError>(__TAURI_INVOKE("discard_scan", { scanId })),
-	/**  One page of a folder's children in the requested order. */
-	getChildren: (scanId: ScanId, node: NodeIndex, sort: ChildSortOrder, offset: number, limit: number) => typedError<ChildrenPage, TreeCommandError>(__TAURI_INVOKE("get_children", { scanId, node, sort, offset, limit })),
-	/**  Full path, sizes, counts, dates and flags of one item. */
-	getNodeDetails: (scanId: ScanId, node: NodeIndex) => typedError<NodeDetails, TreeCommandError>(__TAURI_INVOKE("get_node_details", { scanId, node })),
+	/**
+	 *  One page of a folder's children in the requested order. Online-only cloud files (and
+	 *  folders holding nothing else) are left out unless `online_only` asks to show them.
+	 */
+	getChildren: (scanId: ScanId, node: NodeIndex, sort: ChildSortOrder, offset: number, limit: number, onlineOnly: OnlineOnlyVisibility) => typedError<ChildrenPage, TreeCommandError>(__TAURI_INVOKE("get_children", { scanId, node, sort, offset, limit, onlineOnly })),
+	/**  Full path, sizes, counts, dates and flags of one item. The counts follow `online_only`. */
+	getNodeDetails: (scanId: ScanId, node: NodeIndex, onlineOnly: OnlineOnlyVisibility) => typedError<NodeDetails, TreeCommandError>(__TAURI_INVOKE("get_node_details", { scanId, node, onlineOnly })),
 	/**  The breadcrumb trail from the scanned root down to `node`. */
 	getPathToRoot: (scanId: ScanId, node: NodeIndex) => typedError<BreadcrumbItem[], TreeCommandError>(__TAURI_INVOKE("get_path_to_root", { scanId, node })),
 	/**  A pruned nested view of `node` for the treemap and sunburst, capped at about 5,000 nodes. */
-	getVisualizationSubtree: (scanId: ScanId, node: NodeIndex, maxDepth: number, minimumShareOfParent: number | null) => typedError<VisualizationNode, TreeCommandError>(__TAURI_INVOKE("get_visualization_subtree", { scanId, node, maxDepth, minimumShareOfParent })),
+	getVisualizationSubtree: (scanId: ScanId, node: NodeIndex, maxDepth: number, minimumShareOfParent: number | null, onlineOnly: OnlineOnlyVisibility) => typedError<VisualizationNode, TreeCommandError>(__TAURI_INVOKE("get_visualization_subtree", { scanId, node, maxDepth, minimumShareOfParent, onlineOnly })),
 	/**  The largest files under `node`, optionally of one category. */
-	getLargestFiles: (scanId: ScanId, node: NodeIndex, categoryFilter: "images" | "videos" | "audio" | "pdfs" | "documents" | "spreadsheets" | "presentations" | "archivesAndInstallers" | null, limit: number) => typedError<FileSummary[], TreeCommandError>(__TAURI_INVOKE("get_largest_files", { scanId, node, categoryFilter, limit })),
+	getLargestFiles: (scanId: ScanId, node: NodeIndex, categoryFilter: "images" | "videos" | "audio" | "pdfs" | "documents" | "spreadsheets" | "presentations" | "archivesAndInstallers" | null, limit: number, onlineOnly: OnlineOnlyVisibility) => typedError<FileSummary[], TreeCommandError>(__TAURI_INVOKE("get_largest_files", { scanId, node, categoryFilter, limit, onlineOnly })),
 	/**  Space per file category and per extension under `node`. */
-	getFileTypeBreakdown: (scanId: ScanId, node: NodeIndex) => typedError<FileTypeBreakdown, TreeCommandError>(__TAURI_INVOKE("get_file_type_breakdown", { scanId, node })),
+	getFileTypeBreakdown: (scanId: ScanId, node: NodeIndex, onlineOnly: OnlineOnlyVisibility) => typedError<FileTypeBreakdown, TreeCommandError>(__TAURI_INVOKE("get_file_type_breakdown", { scanId, node, onlineOnly })),
 	/**  Items whose name contains `query`, ignoring case, largest first. */
-	searchNodes: (scanId: ScanId, query: string, limit: number) => typedError<SearchResult[], TreeCommandError>(__TAURI_INVOKE("search_nodes", { scanId, query, limit })),
+	searchNodes: (scanId: ScanId, query: string, limit: number, onlineOnly: OnlineOnlyVisibility) => typedError<SearchResult[], TreeCommandError>(__TAURI_INVOKE("search_nodes", { scanId, query, limit, onlineOnly })),
 	/**  Opens an Explorer window with the item selected. */
 	revealInExplorer: (scanId: ScanId, node: NodeIndex) => typedError<null, FileActionCommandError>(__TAURI_INVOKE("reveal_in_explorer", { scanId, node })),
 	/**  Opens the item with its default application, or a folder in Explorer. */
@@ -163,11 +166,15 @@ export type ChildSummary = {
 	flags: NodeFlagSummary,
 	logicalSize: number,
 	allocatedSize: number,
+	/**  Files in the subtree that the requested visibility lists. */
 	fileCount: number,
 	directoryCount: number,
+	/**  Files in the subtree whose content is only in the cloud, whether listed or not. */
+	onlineOnlyFileCount: number,
 	modifiedAtUnixMilliseconds: number | null,
 	/**  The counted logical size as a fraction (0 to 1) of the parent's logical size. */
 	shareOfParent: number | null,
+	/**  Whether the requested visibility lists any child. */
 	hasChildren: boolean,
 	extension: string | null,
 	category: FileCategory | null,
@@ -423,8 +430,12 @@ export type NodeDetails = {
 	flags: NodeFlagSummary,
 	logicalSize: number,
 	allocatedSize: number,
+	/**  Files in the subtree that the requested visibility lists. */
 	fileCount: number,
 	directoryCount: number,
+	/**  Files in the subtree whose content is only in the cloud, whether listed or not. */
+	onlineOnlyFileCount: number,
+	/**  Children that the requested visibility lists. */
 	childCount: number,
 	modifiedAtUnixMilliseconds: number | null,
 	shareOfParent: number | null,
@@ -450,6 +461,15 @@ export type NodeFlagSummary = {
 export type NodeIndex = number;
 
 export type NodeKind = "file" | "directory";
+
+/**
+ *  Whether the tree queries list online-only items: cloud placeholders whose content is not on
+ *  this disk, and folders that hold nothing else.
+ * 
+ *  Online-only items take almost no space, so a folder of them would look large while freeing
+ *  nothing. They are hidden by default and only ever shown on request.
+ */
+export type OnlineOnlyVisibility = "hidden" | "shown";
 
 /**  One word for the whole search engine, for the "Warming up search engine" screen. */
 export type OverallIndexStatus = 
@@ -731,11 +751,16 @@ export type TreeTotals = {
 	directoryCount: number,
 	inaccessibleDirectoryCount: number,
 	/**
-	 *  Files whose content is only in the cloud. Their logical size is part of `logical_size`;
-	 *  they occupy (almost) no space on disk.
+	 *  Files whose content is (at least partly) only in the cloud. `logical_size` counts only
+	 *  the bytes they have on this disk; this is the size their content would have.
 	 */
 	cloudPlaceholderFileCount: number,
 	cloudPlaceholderLogicalSize: number,
+	/**
+	 *  Cloud placeholder files with no data on this disk at all. Hidden from the tree unless
+	 *  the user asks to see them.
+	 */
+	onlineOnlyFileCount: number,
 	/**
 	 *  Additional hard links: paths shown in the tree that add no size because another path to
 	 *  the same file is counted.

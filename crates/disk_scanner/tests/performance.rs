@@ -14,8 +14,8 @@ use std::time::{Duration, Instant, SystemTime};
 use disk_scanner::file_tree::{DirectoryKey, FileTreeBuilder, NewEntry};
 use disk_scanner::{
     CancellationToken, ChildSortOrder, FileTree, NoProgressReporting, NodeFlags, NodeIndex,
-    NodeKind, ParsedQuery, ScanMethod, ScanTarget, SearchSortOrder, VolumeSearchIndex,
-    build_volume_search_index, list_volumes, scan, search_volume_index,
+    NodeKind, OnlineOnlyVisibility, ParsedQuery, ScanMethod, ScanTarget, SearchSortOrder,
+    VolumeSearchIndex, build_volume_search_index, list_volumes, scan, search_volume_index,
 };
 
 const DIRECTORY_COUNT: u32 = 50_000;
@@ -97,7 +97,7 @@ fn time<T>(label: &str, target: Duration, operation: impl FnOnce() -> T) -> T {
 }
 
 fn find_directory(tree: &FileTree, name: &str) -> NodeIndex {
-    tree.search_nodes(name, 1_000)
+    tree.search_nodes(name, 1_000, OnlineOnlyVisibility::Hidden)
         .into_iter()
         .find(|result| result.name == name)
         .unwrap()
@@ -128,6 +128,7 @@ fn tree_queries_meet_the_targets_on_a_million_nodes() {
                 ChildSortOrder::LogicalSizeDescending,
                 0,
                 200,
+                OnlineOnlyVisibility::Hidden,
             )
             .unwrap()
         },
@@ -136,27 +137,42 @@ fn tree_queries_meet_the_targets_on_a_million_nodes() {
         "children page sorted by name",
         Duration::from_millis(50),
         || {
-            tree.children_page(largest_directory, ChildSortOrder::NameAscending, 500, 200)
-                .unwrap()
+            tree.children_page(
+                largest_directory,
+                ChildSortOrder::NameAscending,
+                500,
+                200,
+                OnlineOnlyVisibility::Hidden,
+            )
+            .unwrap()
         },
     );
     time(
         "visualization subtree of the root",
         Duration::from_millis(100),
-        || tree.visualization_subtree(tree.root(), 6, 0.001).unwrap(),
+        || {
+            tree.visualization_subtree(tree.root(), 6, 0.001, OnlineOnlyVisibility::Hidden)
+                .unwrap()
+        },
     );
     time(
         "largest files of the whole tree",
         Duration::from_millis(100),
-        || tree.largest_files(tree.root(), None, 1_000).unwrap(),
+        || {
+            tree.largest_files(tree.root(), None, 1_000, OnlineOnlyVisibility::Hidden)
+                .unwrap()
+        },
     );
     time(
         "file type breakdown of the whole tree",
         Duration::from_millis(100),
-        || tree.file_type_breakdown(tree.root()).unwrap(),
+        || {
+            tree.file_type_breakdown(tree.root(), OnlineOnlyVisibility::Hidden)
+                .unwrap()
+        },
     );
     time("search for a substring", Duration::from_millis(200), || {
-        tree.search_nodes("-4242", 100)
+        tree.search_nodes("-4242", 100, OnlineOnlyVisibility::Hidden)
     });
 }
 

@@ -35,6 +35,7 @@ type InspectorPanelProps = {
 
 export function InspectorPanel({ scanId, shownFolder, result }: InspectorPanelProps) {
   const selectedNode = useExplorerSelectionStore((state) => state.selectedNode);
+  const onlineOnly = useExplorerSelectionStore((state) => state.onlineOnlyVisibility);
   const inspectedNode = selectedNode ?? shownFolder;
   const detailsState = useNodeDetails(scanId, inspectedNode).state;
   const details = useLastSuccessfulData(detailsState);
@@ -107,7 +108,7 @@ export function InspectorPanel({ scanId, shownFolder, result }: InspectorPanelPr
             </div>
           )}
 
-          <InspectorDetailList details={describeItemDetails(details)} />
+          <InspectorDetailList details={describeItemDetails(details, onlineOnly)} />
 
           <div className="grid grid-cols-2 gap-2">
             {details.kind === "directory" && details.node !== shownFolder && (

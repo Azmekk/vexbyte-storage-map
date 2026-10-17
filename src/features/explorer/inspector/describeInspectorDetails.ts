@@ -1,5 +1,5 @@
 import type { ScanResult } from "@/features/scan/useScanStore";
-import type { NodeDetails } from "@/lib/backend/tree";
+import type { NodeDetails, OnlineOnlyVisibility } from "@/lib/backend/tree";
 import { formatBytesAsReadableSize } from "@/lib/formatting/formatBytesAsReadableSize";
 import { formatCount } from "@/lib/formatting/formatCount";
 import { formatDurationInWords } from "@/lib/formatting/formatDuration";
@@ -9,7 +9,10 @@ import { formatShare } from "@/lib/formatting/formatShare";
 export type InspectorDetailText = { label: string; value: string };
 
 /** The facts listed for one item, in reading order. */
-export function describeItemDetails(details: NodeDetails): InspectorDetailText[] {
+export function describeItemDetails(
+  details: NodeDetails,
+  onlineOnly: OnlineOnlyVisibility,
+): InspectorDetailText[] {
   const rows: InspectorDetailText[] = [
     { label: "Size on disk", value: formatBytesAsReadableSize(details.allocatedSize) },
     { label: "Share of folder", value: formatShare(details.shareOfParent) },
@@ -20,6 +23,13 @@ export function describeItemDetails(details: NodeDetails): InspectorDetailText[]
       { label: "Files", value: formatCount(details.fileCount) },
       { label: "Folders", value: formatCount(details.directoryCount) },
     );
+    if (details.onlineOnlyFileCount > 0) {
+      const count = formatCount(details.onlineOnlyFileCount);
+      rows.push({
+        label: "Online-only files",
+        value: onlineOnly === "hidden" ? `${count} (not shown)` : count,
+      });
+    }
   } else if (details.extension !== null) {
     rows.push({ label: "Type", value: `.${details.extension}` });
   }
@@ -46,8 +56,8 @@ export function describeScanDetails(result: ScanResult): InspectorDetailText[] {
   }
   if (totals.cloudPlaceholderFileCount > 0) {
     rows.push({
-      label: "Online-only files",
-      value: `${formatCount(totals.cloudPlaceholderFileCount)} (${formatBytesAsReadableSize(totals.cloudPlaceholderLogicalSize)})`,
+      label: "In the cloud",
+      value: `${formatCount(totals.cloudPlaceholderFileCount)} files (${formatBytesAsReadableSize(totals.cloudPlaceholderLogicalSize)} online, not counted)`,
     });
   }
   if (totals.additionalHardLinkCount > 0) {

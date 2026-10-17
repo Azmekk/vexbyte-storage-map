@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, PoisonError};
 
-use disk_scanner::{FileTree, NodeIndex, RemovalSummary, TreeQueryError, TreeTotals};
+use disk_scanner::{
+    FileTree, NodeIndex, OnlineOnlyVisibility, RemovalSummary, TreeQueryError, TreeTotals,
+};
 use file_actions::RecycleResult;
 use serde::Serialize;
 use specta::Type;
@@ -115,7 +117,7 @@ pub struct ThumbnailHandle {
 }
 
 fn live_node_path(tree: &FileTree, node: NodeIndex) -> Result<PathBuf, FileActionCommandError> {
-    let details = tree.node_details(node)?;
+    let details = tree.node_details(node, OnlineOnlyVisibility::Shown)?;
     details
         .full_path
         .ok_or(FileActionCommandError::NodeHasNoPath { node: node.get() })

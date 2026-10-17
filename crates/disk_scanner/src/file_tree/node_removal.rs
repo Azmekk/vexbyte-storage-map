@@ -79,10 +79,11 @@ impl FileTree {
                 .flags
                 .remove(NodeFlags::HARD_LINK_COUNTED_ELSEWHERE);
             let regained = SizeContribution {
-                logical_size: promoted_node.logical_size,
-                allocated_size: promoted_node.allocated_size,
+                logical_size: promoted_node.counted_logical_size(),
+                allocated_size: promoted_node.counted_allocated_size(),
                 file_count: 0,
                 directory_count: 0,
+                online_only_file_count: 0,
             };
             self.add_to_ancestors(promoted_link, regained);
             summary.freed_logical_size = summary
@@ -158,7 +159,9 @@ mod tests {
     use super::*;
     use crate::file_identity::FileIdentity;
     use crate::file_tree::test_trees::{child_named, sample_tree};
-    use crate::file_tree::{DirectoryKey, FileTreeBuilder, NewEntry, TreeQueryError};
+    use crate::file_tree::{
+        DirectoryKey, FileTreeBuilder, NewEntry, OnlineOnlyVisibility, TreeQueryError,
+    };
 
     #[test]
     fn removes_a_subtree_and_updates_every_ancestor() {
@@ -178,10 +181,13 @@ mod tests {
         assert_eq!(tree.node(photos).unwrap().logical_size(), 700);
         assert_eq!(tree.children(photos).count(), 2);
         assert_eq!(
-            tree.node_details(shot),
+            tree.node_details(shot, OnlineOnlyVisibility::Shown),
             Err(TreeQueryError::NodeRemoved { node: shot })
         );
-        assert_eq!(tree.search_nodes("shot", 10), []);
+        assert_eq!(
+            tree.search_nodes("shot", 10, OnlineOnlyVisibility::Shown),
+            []
+        );
     }
 
     #[test]

@@ -2,7 +2,8 @@ use std::sync::PoisonError;
 
 use disk_scanner::{
     BreadcrumbItem, ChildSortOrder, ChildrenPage, FileCategory, FileSummary, FileTree,
-    FileTypeBreakdown, NodeDetails, NodeIndex, SearchResult, TreeQueryError, VisualizationNode,
+    FileTypeBreakdown, NodeDetails, NodeIndex, OnlineOnlyVisibility, SearchResult, TreeQueryError,
+    VisualizationNode,
 };
 use serde::Serialize;
 use specta::Type;
@@ -90,7 +91,8 @@ async fn query_tree_in_background<Answer: Send + 'static>(
     Ok(answer)
 }
 
-/// One page of a folder's children in the requested order.
+/// One page of a folder's children in the requested order. Online-only cloud files (and
+/// folders holding nothing else) are left out unless `online_only` asks to show them.
 #[tauri::command]
 #[specta::specta]
 pub async fn get_children(
@@ -100,21 +102,23 @@ pub async fn get_children(
     sort: ChildSortOrder,
     offset: u32,
     limit: u32,
+    online_only: OnlineOnlyVisibility,
 ) -> Result<ChildrenPage, TreeCommandError> {
     query_tree(&state, scan_id, |tree| {
-        tree.children_page(node, sort, offset, limit)
+        tree.children_page(node, sort, offset, limit, online_only)
     })
 }
 
-/// Full path, sizes, counts, dates and flags of one item.
+/// Full path, sizes, counts, dates and flags of one item. The counts follow `online_only`.
 #[tauri::command]
 #[specta::specta]
 pub async fn get_node_details(
     state: State<'_, AppState>,
     scan_id: ScanId,
     node: NodeIndex,
+    online_only: OnlineOnlyVisibility,
 ) -> Result<NodeDetails, TreeCommandError> {
-    query_tree(&state, scan_id, |tree| tree.node_details(node))
+    query_tree(&state, scan_id, |tree| tree.node_details(node, online_only))
 }
 
 /// The breadcrumb trail from the scanned root down to `node`.
@@ -137,9 +141,10 @@ pub async fn get_visualization_subtree(
     node: NodeIndex,
     max_depth: u32,
     minimum_share_of_parent: f64,
+    online_only: OnlineOnlyVisibility,
 ) -> Result<VisualizationNode, TreeCommandError> {
     query_tree(&state, scan_id, |tree| {
-        tree.visualization_subtree(node, max_depth, minimum_share_of_parent)
+        tree.visualization_subtree(node, max_depth, minimum_share_of_parent, online_only)
     })
 }
 
@@ -152,9 +157,10 @@ pub async fn get_largest_files(
     node: NodeIndex,
     category_filter: Option<FileCategory>,
     limit: u32,
+    online_only: OnlineOnlyVisibility,
 ) -> Result<Vec<FileSummary>, TreeCommandError> {
     query_tree_in_background(&state, scan_id, move |tree| {
-        tree.largest_files(node, category_filter, limit)
+        tree.largest_files(node, category_filter, limit, online_only)
     })
     .await
 }
@@ -166,8 +172,12 @@ pub async fn get_file_type_breakdown(
     state: State<'_, AppState>,
     scan_id: ScanId,
     node: NodeIndex,
+    online_only: OnlineOnlyVisibility,
 ) -> Result<FileTypeBreakdown, TreeCommandError> {
-    query_tree_in_background(&state, scan_id, move |tree| tree.file_type_breakdown(node)).await
+    query_tree_in_background(&state, scan_id, move |tree| {
+        tree.file_type_breakdown(node, online_only)
+    })
+    .await
 }
 
 /// Items whose name contains `query`, ignoring case, largest first.
@@ -178,9 +188,10 @@ pub async fn search_nodes(
     scan_id: ScanId,
     query: String,
     limit: u32,
+    online_only: OnlineOnlyVisibility,
 ) -> Result<Vec<SearchResult>, TreeCommandError> {
     query_tree_in_background(&state, scan_id, move |tree| {
-        Ok(tree.search_nodes(&query, limit))
+        Ok(tree.search_nodes(&query, limit, online_only))
     })
     .await
 }

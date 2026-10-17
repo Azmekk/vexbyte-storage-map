@@ -372,6 +372,7 @@ pub(crate) struct SizeContribution {
     pub(crate) allocated_size: u64,
     pub(crate) file_count: u32,
     pub(crate) directory_count: u32,
+    pub(crate) online_only_file_count: u32,
 }
 
 impl SizeContribution {
@@ -382,12 +383,14 @@ impl SizeContribution {
                 allocated_size: node.counted_allocated_size(),
                 file_count: 1,
                 directory_count: 0,
+                online_only_file_count: u32::from(node.is_online_only()),
             },
             NodeKind::Directory => Self {
                 logical_size: node.logical_size,
                 allocated_size: node.allocated_size,
                 file_count: node.file_count,
                 directory_count: node.directory_count + 1,
+                online_only_file_count: node.online_only_file_count,
             },
         }
     }
@@ -397,6 +400,9 @@ impl SizeContribution {
         node.allocated_size = node.allocated_size.saturating_add(self.allocated_size);
         node.file_count = node.file_count.saturating_add(self.file_count);
         node.directory_count = node.directory_count.saturating_add(self.directory_count);
+        node.online_only_file_count = node
+            .online_only_file_count
+            .saturating_add(self.online_only_file_count);
     }
 
     pub(crate) fn subtract_from(self, node: &mut Node) {
@@ -404,6 +410,9 @@ impl SizeContribution {
         node.allocated_size = node.allocated_size.saturating_sub(self.allocated_size);
         node.file_count = node.file_count.saturating_sub(self.file_count);
         node.directory_count = node.directory_count.saturating_sub(self.directory_count);
+        node.online_only_file_count = node
+            .online_only_file_count
+            .saturating_sub(self.online_only_file_count);
     }
 }
 

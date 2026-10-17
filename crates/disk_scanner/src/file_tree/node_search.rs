@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use super::node::{NodeFlags, NodeIndex, NodeKind};
+use super::online_only_visibility::OnlineOnlyVisibility;
 use super::tree_arena::FileTree;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -22,12 +23,18 @@ pub struct SearchResult {
 const SEARCH_CHUNK_SIZE: usize = 16 * 1024;
 
 impl FileTree {
-    /// Finds nodes whose name contains `query`, ignoring case, largest first.
+    /// Finds nodes whose name contains `query`, ignoring case, largest first, leaving out what
+    /// `visibility` hides.
     ///
     /// Scans every name in parallel, so it takes tens of milliseconds for a million nodes;
     /// call it from a background thread.
     #[must_use]
-    pub fn search_nodes(&self, query: &str, limit: u32) -> Vec<SearchResult> {
+    pub fn search_nodes(
+        &self,
+        query: &str,
+        limit: u32,
+        visibility: OnlineOnlyVisibility,
+    ) -> Vec<SearchResult> {
         let trimmed_query = query.trim();
         if trimmed_query.is_empty() || limit == 0 {
             return Vec::new();
@@ -47,7 +54,8 @@ impl FileTree {
                         let is_searchable = *position + chunk_start != 0
                             && !node
                                 .flags
-                                .intersects(NodeFlags::REMOVED | NodeFlags::SYNTHETIC);
+                                .intersects(NodeFlags::REMOVED | NodeFlags::SYNTHETIC)
+                            && visibility.shows(node);
                         is_searchable && matcher.matches(self.names.name(node.name))
                     })
                     .map(move |(position, node)| {
@@ -110,13 +118,15 @@ impl NameMatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::file_tree::test_trees::sample_tree;
+    use crate::file_tree::test_trees::{cloud_tree, sample_tree};
+
+    const SHOWN: OnlineOnlyVisibility = OnlineOnlyVisibility::Shown;
 
     #[test]
     fn finds_names_case_insensitively_largest_first() {
         let tree = sample_tree();
 
-        let results = tree.search_nodes("P", 10);
+        let results = tree.search_nodes("P", 10, SHOWN);
         let names: Vec<_> = results.iter().map(|result| result.name.as_str()).collect();
 
         assert_eq!(names, ["Photos", "setup.exe", "beach.JPG", "city.png"]);
@@ -126,9 +136,25 @@ mod tests {
     fn limits_results_and_ignores_empty_queries() {
         let tree = sample_tree();
 
-        assert_eq!(tree.search_nodes("e", 2).len(), 2);
-        assert_eq!(tree.search_nodes("   ", 10), []);
-        assert_eq!(tree.search_nodes("does-not-exist", 10), []);
+        assert_eq!(tree.search_nodes("e", 2, SHOWN).len(), 2);
+        assert_eq!(tree.search_nodes("   ", 10, SHOWN), []);
+        assert_eq!(tree.search_nodes("does-not-exist", 10, SHOWN), []);
+    }
+
+    #[test]
+    fn leaves_out_hidden_online_only_items() {
+        let tree = cloud_tree();
+
+        let hidden = tree.search_nodes(".", 10, OnlineOnlyVisibility::Hidden);
+        let names: Vec<_> = hidden.iter().map(|result| result.name.as_str()).collect();
+        assert_eq!(names, ["partial.iso", "local.pdf", "zero.txt"]);
+
+        let shown = tree.search_nodes("Cloud", 10, SHOWN);
+        assert_eq!(shown.len(), 1);
+        assert_eq!(
+            tree.search_nodes("Cloud", 10, OnlineOnlyVisibility::Hidden),
+            []
+        );
     }
 
     #[test]

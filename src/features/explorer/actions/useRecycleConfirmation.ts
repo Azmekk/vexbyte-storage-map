@@ -40,7 +40,7 @@ export function useRecycleConfirmation(): RecycleConfirmation {
     }
 
     let isCurrentRequest = true;
-    Promise.all(pendingNodes.map((node) => getNodeDetails(scanId, node))).then(
+    Promise.all(pendingNodes.map((node) => getNodeDetails(scanId, node, "shown"))).then(
       (loadedItems) => {
         if (isCurrentRequest) {
           setItems(loadedItems);

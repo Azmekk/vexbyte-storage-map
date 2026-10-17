@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { BreadcrumbItem, ChildrenPage, ChildSummary } from "@/lib/backend/tree";
 import type { QueryState } from "@/lib/queryCache/scanQueryCache";
 import { buildBreadcrumbTrail } from "./breadcrumbs/buildBreadcrumbTrail";
+import { parseOnlineOnlyVisibility } from "./onlineOnlyVisibilityPreference";
 import { describeEmptyFolder } from "./tree/describeEmptyFolder";
 import { flattenTreeRows } from "./tree/flattenTreeRows";
 import { columnSortState, nextSortOrderForColumn } from "./tree/treeColumns";
@@ -28,6 +29,7 @@ function createChild(node: number, overrides: Partial<ChildSummary> = {}): Child
     allocatedSize: 100,
     fileCount: 1,
     directoryCount: 0,
+    onlineOnlyFileCount: 0,
     modifiedAtUnixMilliseconds: null,
     shareOfParent: 0.5,
     hasChildren: true,
@@ -224,15 +226,37 @@ describe("buildBreadcrumbTrail", () => {
 
 describe("describeEmptyFolder", () => {
   const flags = createChild(1).flags;
+  const plainFolder = { flags, onlineOnlyFileCount: 0 };
 
   it("explains protected folders instead of calling them empty", () => {
-    const description = describeEmptyFolder({ ...flags, inaccessible: true });
+    const description = describeEmptyFolder({
+      ...plainFolder,
+      flags: { ...flags, inaccessible: true },
+    });
     expect(description.isWarning).toBe(true);
     expect(description.title).not.toMatch(/empty/i);
   });
 
   it("calls a plain folder empty, also before its flags are known", () => {
-    expect(describeEmptyFolder(flags).title).toBe("This folder is empty");
+    expect(describeEmptyFolder(plainFolder).title).toBe("This folder is empty");
     expect(describeEmptyFolder(null).title).toBe("This folder is empty");
+    expect(describeEmptyFolder(plainFolder).hasHiddenOnlineOnlyFiles).toBe(false);
+  });
+
+  it("offers to show a folder whose files are all online-only", () => {
+    const description = describeEmptyFolder({ flags, onlineOnlyFileCount: 1204 });
+    expect(description.title).toBe("Only online-only files here");
+    expect(description.description).toContain("1,204 files are");
+    expect(description.hasHiddenOnlineOnlyFiles).toBe(true);
+    expect(description.isWarning).toBe(false);
+  });
+});
+
+describe("parseOnlineOnlyVisibility", () => {
+  it("hides online-only files unless the stored choice says to show them", () => {
+    expect(parseOnlineOnlyVisibility("shown")).toBe("shown");
+    expect(parseOnlineOnlyVisibility("hidden")).toBe("hidden");
+    expect(parseOnlineOnlyVisibility(null)).toBe("hidden");
+    expect(parseOnlineOnlyVisibility("sometimes")).toBe("hidden");
   });
 });

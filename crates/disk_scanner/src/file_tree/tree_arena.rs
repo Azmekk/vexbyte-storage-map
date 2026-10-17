@@ -7,6 +7,7 @@ use specta::Type;
 use super::hard_link_groups::HardLinkGroups;
 use super::name_storage::NameStorage;
 use super::node::{Node, NodeFlags, NodeIndex, NodeKind};
+use super::online_only_visibility::OnlineOnlyVisibility;
 use super::tree_query_error::TreeQueryError;
 
 /// The finished result of a scan: every file and directory in a compact arena.
@@ -32,10 +33,13 @@ pub struct TreeTotals {
     pub file_count: u32,
     pub directory_count: u32,
     pub inaccessible_directory_count: u32,
-    /// Files whose content is only in the cloud. Their logical size is part of `logical_size`;
-    /// they occupy (almost) no space on disk.
+    /// Files whose content is (at least partly) only in the cloud. `logical_size` counts only
+    /// the bytes they have on this disk; this is the size their content would have.
     pub cloud_placeholder_file_count: u32,
     pub cloud_placeholder_logical_size: u64,
+    /// Cloud placeholder files with no data on this disk at all. Hidden from the tree unless
+    /// the user asks to see them.
+    pub online_only_file_count: u32,
     /// Additional hard links: paths shown in the tree that add no size because another path to
     /// the same file is counted.
     pub additional_hard_link_count: u32,
@@ -127,6 +131,16 @@ impl FileTree {
             .map(NodeIndex::from_usize)
     }
 
+    /// The children of a directory that `visibility` lists, in storage order.
+    pub fn shown_children(
+        &self,
+        index: NodeIndex,
+        visibility: OnlineOnlyVisibility,
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
+        self.children(index)
+            .filter(move |&child| visibility.shows(&self.nodes[child.as_usize()]))
+    }
+
     /// Rebuilds the full path from the parent chain and the root path. Synthetic grouping
     /// directories are skipped, so `$MFT` under "NTFS metadata" resolves to `C:\$MFT`.
     ///
@@ -169,6 +183,7 @@ impl FileTree {
             allocated_size: root.allocated_size,
             file_count: root.file_count,
             directory_count: root.directory_count,
+            online_only_file_count: root.online_only_file_count,
             ..TreeTotals::default()
         };
 

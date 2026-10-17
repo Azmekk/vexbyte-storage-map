@@ -1,4 +1,6 @@
 import {
+  CloudIcon,
+  CloudOffIcon,
   PanelRightCloseIcon,
   PanelRightIcon,
   RotateCwIcon,
@@ -32,6 +34,12 @@ export function ExplorerTopBarActions({
   const openSearch = useSearchPaletteStore((state) => state.setOpen);
   const isInspectorOpen = useExplorerSelectionStore((state) => state.isInspectorOpen);
   const setInspectorOpen = useExplorerSelectionStore((state) => state.setInspectorOpen);
+  const onlineOnlyVisibility = useExplorerSelectionStore((state) => state.onlineOnlyVisibility);
+  const setOnlineOnlyVisibility = useExplorerSelectionStore(
+    (state) => state.setOnlineOnlyVisibility,
+  );
+  const showsOnlineOnly = onlineOnlyVisibility === "shown";
+  const onlineOnlyLabel = showsOnlineOnly ? "Hide online-only files" : "Show online-only files";
   const scanAgeLabel = useScanAgeLabel(endedAtUnixMilliseconds);
 
   return (
@@ -82,6 +90,27 @@ export function ExplorerTopBarActions({
             <Kbd>Ctrl</Kbd>
             <Kbd>R</Kbd>
           </KbdGroup>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={onlineOnlyLabel}
+            aria-pressed={showsOnlineOnly}
+            onClick={() => setOnlineOnlyVisibility(showsOnlineOnly ? "hidden" : "shown")}
+          >
+            {showsOnlineOnly ? <CloudIcon /> : <CloudOffIcon />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-64">
+          {onlineOnlyLabel}
+          <span className="block text-muted-foreground">
+            {showsOnlineOnly
+              ? "Cloud files without data on this PC are listed; they still count as taking no space."
+              : "Cloud files without data on this PC are left out, so sizes show what is really on disk."}
+          </span>
         </TooltipContent>
       </Tooltip>
       <Tooltip>

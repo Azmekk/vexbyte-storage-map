@@ -12,6 +12,7 @@ use specta::Type;
 use super::name_storage::NameStorage;
 use super::node::{Node, NodeIndex, NodeKind};
 use super::node_flag_summary::NodeFlagSummary;
+use super::online_only_visibility::OnlineOnlyVisibility;
 use super::tree_arena::FileTree;
 use super::tree_query_error::TreeQueryError;
 
@@ -41,11 +42,15 @@ pub struct ChildSummary {
     pub flags: NodeFlagSummary,
     pub logical_size: u64,
     pub allocated_size: u64,
+    /// Files in the subtree that the requested visibility lists.
     pub file_count: u32,
     pub directory_count: u32,
+    /// Files in the subtree whose content is only in the cloud, whether listed or not.
+    pub online_only_file_count: u32,
     pub modified_at_unix_milliseconds: Option<u64>,
     /// The counted logical size as a fraction (0 to 1) of the parent's logical size.
     pub share_of_parent: f64,
+    /// Whether the requested visibility lists any child.
     pub has_children: bool,
     pub extension: Option<String>,
     pub category: Option<FileCategory>,
@@ -73,8 +78,12 @@ pub struct NodeDetails {
     pub flags: NodeFlagSummary,
     pub logical_size: u64,
     pub allocated_size: u64,
+    /// Files in the subtree that the requested visibility lists.
     pub file_count: u32,
     pub directory_count: u32,
+    /// Files in the subtree whose content is only in the cloud, whether listed or not.
+    pub online_only_file_count: u32,
+    /// Children that the requested visibility lists.
     pub child_count: u32,
     pub modified_at_unix_milliseconds: Option<u64>,
     pub share_of_parent: f64,
@@ -138,8 +147,8 @@ pub struct FileTypeBreakdown {
 }
 
 impl FileTree {
-    /// One page of a directory's children in the requested order. Files have no children and
-    /// return an empty page.
+    /// One page of a directory's children in the requested order, leaving out what
+    /// `visibility` hides. Files have no children and return an empty page.
     ///
     /// # Errors
     ///
@@ -150,9 +159,10 @@ impl FileTree {
         sort_order: ChildSortOrder,
         offset: u32,
         limit: u32,
+        visibility: OnlineOnlyVisibility,
     ) -> Result<ChildrenPage, TreeQueryError> {
         let parent_node = self.live_node(parent)?;
-        let mut children: Vec<NodeIndex> = self.children(parent).collect();
+        let mut children: Vec<NodeIndex> = self.shown_children(parent, visibility).collect();
         let total_child_count = u32::try_from(children.len()).unwrap_or(u32::MAX);
 
         children.sort_unstable_by(|&first, &second| {
@@ -164,7 +174,7 @@ impl FileTree {
             .into_iter()
             .skip(offset as usize)
             .take(limit as usize)
-            .map(|child| self.child_summary(child, parent_node))
+            .map(|child| self.child_summary(child, parent_node, visibility))
             .collect();
 
         Ok(ChildrenPage {
@@ -218,7 +228,12 @@ impl FileTree {
         }
     }
 
-    fn child_summary(&self, child: NodeIndex, parent_node: &Node) -> ChildSummary {
+    fn child_summary(
+        &self,
+        child: NodeIndex,
+        parent_node: &Node,
+        visibility: OnlineOnlyVisibility,
+    ) -> ChildSummary {
         let node = &self.nodes[child.as_usize()];
 
         ChildSummary {
@@ -228,11 +243,12 @@ impl FileTree {
             flags: node.flags.into(),
             logical_size: node.logical_size,
             allocated_size: node.allocated_size,
-            file_count: node.file_count,
+            file_count: node.file_count_under(visibility),
             directory_count: node.directory_count,
+            online_only_file_count: node.online_only_file_count,
             modified_at_unix_milliseconds: node.modified_time.unix_milliseconds(),
             share_of_parent: share_of(node.counted_logical_size(), parent_node.logical_size),
-            has_children: self.children(child).next().is_some(),
+            has_children: self.shown_children(child, visibility).next().is_some(),
             extension: self.extension(child).map(str::to_owned),
             category: self.category(child),
         }
@@ -241,7 +257,11 @@ impl FileTree {
     /// # Errors
     ///
     /// Fails when `node` does not exist or was removed.
-    pub fn node_details(&self, node: NodeIndex) -> Result<NodeDetails, TreeQueryError> {
+    pub fn node_details(
+        &self,
+        node: NodeIndex,
+        visibility: OnlineOnlyVisibility,
+    ) -> Result<NodeDetails, TreeQueryError> {
         let tree_node = self.live_node(node)?;
         let parent_logical_size = tree_node
             .parent()
@@ -257,9 +277,11 @@ impl FileTree {
             flags: tree_node.flags.into(),
             logical_size: tree_node.logical_size,
             allocated_size: tree_node.allocated_size,
-            file_count: tree_node.file_count,
+            file_count: tree_node.file_count_under(visibility),
             directory_count: tree_node.directory_count,
-            child_count: u32::try_from(self.children(node).count()).unwrap_or(u32::MAX),
+            online_only_file_count: tree_node.online_only_file_count,
+            child_count: u32::try_from(self.shown_children(node, visibility).count())
+                .unwrap_or(u32::MAX),
             modified_at_unix_milliseconds: tree_node.modified_time.unix_milliseconds(),
             share_of_parent: share_of(tree_node.counted_logical_size(), parent_logical_size),
             extension: self.extension(node).map(str::to_owned),
@@ -289,7 +311,8 @@ impl FileTree {
         Ok(breadcrumbs)
     }
 
-    /// The `limit` largest files under `node` by logical size, optionally of one category.
+    /// The `limit` largest files under `node` by logical size, optionally of one category,
+    /// leaving out what `visibility` hides.
     ///
     /// # Errors
     ///
@@ -299,6 +322,7 @@ impl FileTree {
         node: NodeIndex,
         category_filter: Option<FileCategory>,
         limit: u32,
+        visibility: OnlineOnlyVisibility,
     ) -> Result<Vec<FileSummary>, TreeQueryError> {
         self.live_node(node)?;
         let limit = limit as usize;
@@ -311,7 +335,7 @@ impl FileTree {
             BinaryHeap::with_capacity(limit.min(self.nodes.len()) + 1);
 
         self.for_each_live_descendant(node, |file_index, file_node| {
-            if file_node.kind != NodeKind::File {
+            if file_node.kind != NodeKind::File || !visibility.shows(file_node) {
                 return;
             }
             if let Some(wanted_category) = category_filter
@@ -354,7 +378,8 @@ impl FileTree {
         }
     }
 
-    /// Sizes per file category and per extension under `node`, with hard links counted once.
+    /// Sizes per file category and per extension under `node`, with hard links counted once
+    /// and what `visibility` hides left out.
     ///
     /// # Errors
     ///
@@ -362,12 +387,13 @@ impl FileTree {
     pub fn file_type_breakdown(
         &self,
         node: NodeIndex,
+        visibility: OnlineOnlyVisibility,
     ) -> Result<FileTypeBreakdown, TreeQueryError> {
         self.live_node(node)?;
 
         let mut totals_by_extension = vec![TypeTotals::default(); self.names.extension_id_count()];
         self.for_each_live_descendant(node, |_, file_node| {
-            if file_node.kind == NodeKind::File {
+            if file_node.kind == NodeKind::File && visibility.shows(file_node) {
                 let totals = &mut totals_by_extension[file_node.extension.as_usize()];
                 totals.logical_size += file_node.counted_logical_size();
                 totals.allocated_size += file_node.counted_allocated_size();
@@ -487,15 +513,28 @@ mod tests {
 
     use super::*;
     use crate::file_identity::FileIdentity;
-    use crate::file_tree::test_trees::{child_named, entry, sample_tree};
+    use crate::file_tree::test_trees::{child_named, cloud_tree, entry, node_named, sample_tree};
     use crate::file_tree::{DirectoryKey, FileTreeBuilder, NewEntry};
+
+    const HIDDEN: OnlineOnlyVisibility = OnlineOnlyVisibility::Hidden;
+    const SHOWN: OnlineOnlyVisibility = OnlineOnlyVisibility::Shown;
+
+    fn names_of(children: &[ChildSummary]) -> Vec<&str> {
+        children.iter().map(|child| child.name.as_str()).collect()
+    }
 
     #[test]
     fn sorts_and_pages_children() {
         let tree = sample_tree();
 
         let by_size = tree
-            .children_page(tree.root(), ChildSortOrder::LogicalSizeDescending, 0, 10)
+            .children_page(
+                tree.root(),
+                ChildSortOrder::LogicalSizeDescending,
+                0,
+                10,
+                SHOWN,
+            )
             .unwrap();
         let names: Vec<_> = by_size
             .children
@@ -508,7 +547,7 @@ mod tests {
         assert!((by_size.children[0].share_of_parent - 1600.0 / 2360.0).abs() < 1e-9);
 
         let second_page = tree
-            .children_page(tree.root(), ChildSortOrder::NameAscending, 1, 2)
+            .children_page(tree.root(), ChildSortOrder::NameAscending, 1, 2, SHOWN)
             .unwrap();
         let names: Vec<_> = second_page
             .children
@@ -525,7 +564,7 @@ mod tests {
         let raw = child_named(&tree, photos, "raw");
         let shot = child_named(&tree, raw, "shot.cr3");
 
-        let details = tree.node_details(shot).unwrap();
+        let details = tree.node_details(shot, SHOWN).unwrap();
         assert_eq!(
             details.full_path,
             Some(
@@ -548,12 +587,12 @@ mod tests {
     fn finds_largest_files_with_and_without_category() {
         let tree = sample_tree();
 
-        let largest = tree.largest_files(tree.root(), None, 3).unwrap();
+        let largest = tree.largest_files(tree.root(), None, 3, SHOWN).unwrap();
         let names: Vec<_> = largest.iter().map(|file| file.name.as_str()).collect();
         assert_eq!(names, ["shot.cr3", "setup.exe", "beach.JPG"]);
 
         let images = tree
-            .largest_files(tree.root(), Some(FileCategory::Images), 10)
+            .largest_files(tree.root(), Some(FileCategory::Images), 10, SHOWN)
             .unwrap();
         let names: Vec<_> = images.iter().map(|file| file.name.as_str()).collect();
         assert_eq!(names, ["shot.cr3", "beach.JPG", "city.png"]);
@@ -563,7 +602,9 @@ mod tests {
     fn a_huge_largest_files_limit_does_not_preallocate_it() {
         let tree = sample_tree();
 
-        let largest = tree.largest_files(tree.root(), None, u32::MAX).unwrap();
+        let largest = tree
+            .largest_files(tree.root(), None, u32::MAX, SHOWN)
+            .unwrap();
 
         assert_eq!(
             largest.len(),
@@ -575,7 +616,7 @@ mod tests {
     fn breaks_down_file_types_by_category_and_extension() {
         let tree = sample_tree();
 
-        let breakdown = tree.file_type_breakdown(tree.root()).unwrap();
+        let breakdown = tree.file_type_breakdown(tree.root(), SHOWN).unwrap();
 
         assert_eq!(breakdown.total_logical_size, 2360);
         assert_eq!(breakdown.categories[0].category, Some(FileCategory::Images));
@@ -608,7 +649,7 @@ mod tests {
         }
         let tree = builder.finish();
 
-        let breakdown = tree.file_type_breakdown(tree.root()).unwrap();
+        let breakdown = tree.file_type_breakdown(tree.root(), SHOWN).unwrap();
 
         assert_eq!(breakdown.total_logical_size, 1000);
         assert_eq!(breakdown.categories[0].file_count, 2);
@@ -620,8 +661,106 @@ mod tests {
         let missing = NodeIndex::new(999);
 
         assert_eq!(
-            tree.node_details(missing),
+            tree.node_details(missing, SHOWN),
             Err(TreeQueryError::NodeNotFound { node: missing })
         );
+    }
+
+    #[test]
+    fn hides_online_only_items_unless_asked_to_show_them() {
+        let tree = cloud_tree();
+
+        let hidden = tree
+            .children_page(tree.root(), ChildSortOrder::NameAscending, 0, 20, HIDDEN)
+            .unwrap();
+        assert_eq!(
+            names_of(&hidden.children),
+            ["Empty", "Mixed", "partial.iso", "zero.txt"],
+            "online-only files and folders holding nothing else are left out"
+        );
+        assert_eq!(hidden.total_child_count, 4);
+
+        let shown = tree
+            .children_page(tree.root(), ChildSortOrder::NameAscending, 0, 20, SHOWN)
+            .unwrap();
+        assert_eq!(
+            names_of(&shown.children),
+            [
+                "Cloud",
+                "Empty",
+                "Mixed",
+                "partial.iso",
+                "Unpopulated",
+                "video.mp4",
+                "zero.txt"
+            ]
+        );
+    }
+
+    #[test]
+    fn counts_and_children_follow_the_visibility() {
+        let tree = cloud_tree();
+        let mixed = node_named(&tree, "Mixed");
+        let cloud = node_named(&tree, "Cloud");
+
+        let hidden = tree.node_details(mixed, HIDDEN).unwrap();
+        assert_eq!(hidden.file_count, 1);
+        assert_eq!(hidden.online_only_file_count, 1);
+        assert_eq!(hidden.child_count, 1);
+
+        let shown = tree.node_details(mixed, SHOWN).unwrap();
+        assert_eq!(shown.file_count, 2);
+        assert_eq!(shown.child_count, 2);
+
+        let cloud_row = tree
+            .children_page(tree.root(), ChildSortOrder::NameAscending, 0, 20, SHOWN)
+            .unwrap()
+            .children
+            .into_iter()
+            .find(|child| child.node == cloud)
+            .unwrap();
+        assert_eq!(cloud_row.file_count, 4);
+        assert_eq!(cloud_row.logical_size, 0, "nothing of it is on disk");
+        assert!(cloud_row.has_children);
+
+        let root_hidden = tree.node_details(tree.root(), HIDDEN).unwrap();
+        assert_eq!(root_hidden.file_count, 3);
+        assert_eq!(root_hidden.online_only_file_count, 6);
+    }
+
+    #[test]
+    fn largest_files_and_breakdown_leave_out_hidden_online_only_files() {
+        let tree = cloud_tree();
+
+        let hidden = tree.largest_files(tree.root(), None, 10, HIDDEN).unwrap();
+        let names: Vec<_> = hidden.iter().map(|file| file.name.as_str()).collect();
+        assert_eq!(names, ["partial.iso", "local.pdf", "zero.txt"]);
+
+        let shown = tree.largest_files(tree.root(), None, 2, SHOWN).unwrap();
+        let names: Vec<_> = shown.iter().map(|file| file.name.as_str()).collect();
+        assert_eq!(
+            names,
+            ["partial.iso", "video.mp4"],
+            "when shown, online-only files rank by the size of their content"
+        );
+
+        let breakdown = tree.file_type_breakdown(tree.root(), HIDDEN).unwrap();
+        assert_eq!(breakdown.total_logical_size, 300 + 65_536);
+        assert!(
+            breakdown
+                .extensions
+                .iter()
+                .all(|share| share.extension.as_deref() != Some("jpg")),
+            "the online-only JPEGs are not part of the breakdown"
+        );
+
+        let breakdown = tree.file_type_breakdown(tree.root(), SHOWN).unwrap();
+        let jpg = breakdown
+            .extensions
+            .iter()
+            .find(|share| share.extension.as_deref() == Some("jpg"))
+            .unwrap();
+        assert_eq!(jpg.file_count, 4);
+        assert_eq!(jpg.logical_size, 0, "they still take no space");
     }
 }

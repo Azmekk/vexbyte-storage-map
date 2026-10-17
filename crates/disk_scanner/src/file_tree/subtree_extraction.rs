@@ -88,6 +88,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
 
     use super::*;
+    use crate::file_tree::OnlineOnlyVisibility;
     use crate::file_tree::test_trees::sample_tree;
 
     #[test]
@@ -103,7 +104,7 @@ mod tests {
         assert_eq!(root.logical_size(), 1600);
         assert_eq!(root.file_count(), 3);
         assert_eq!(root.directory_count(), 1);
-        let shot = subtree.search_nodes("shot", 1)[0].node;
+        let shot = subtree.search_nodes("shot", 1, OnlineOnlyVisibility::Shown)[0].node;
         assert_eq!(
             subtree.full_path(shot),
             Some(

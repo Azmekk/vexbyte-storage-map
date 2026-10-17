@@ -10,7 +10,7 @@ import { useExplorerSelectionStore } from "./useExplorerSelectionStore";
  */
 export async function revealNodeInExplorer(scanId: ScanId, node: NodeIndex): Promise<void> {
   try {
-    const details = await getNodeDetails(scanId, node);
+    const details = await getNodeDetails(scanId, node, "shown");
     const explorer = useExplorerSelectionStore.getState();
 
     if (details.kind === "directory" || details.parent === null) {

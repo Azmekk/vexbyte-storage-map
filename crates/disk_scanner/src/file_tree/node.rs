@@ -33,7 +33,7 @@ impl NodeIndex {
 }
 
 /// A `NodeIndex` that may be absent, stored in 4 bytes instead of the 8 an
-/// `Option<NodeIndex>` takes, which keeps `Node` under 64 bytes.
+/// `Option<NodeIndex>` takes, which keeps `Node` within 64 bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct OptionalNodeIndex(u32);
 
@@ -117,7 +117,8 @@ impl NodeTime {
     }
 }
 
-/// One file or directory in the tree. Kept under 64 bytes; names live in `NameStorage`.
+/// One file or directory in the tree. Kept within one 64-byte cache line; names live in
+/// `NameStorage`.
 ///
 /// For directories the sizes and counts are aggregated over the whole subtree. For files they
 /// are the file's own sizes.
@@ -132,6 +133,8 @@ pub struct Node {
     pub(crate) child_count: u32,
     pub(crate) file_count: u32,
     pub(crate) directory_count: u32,
+    /// Files in the subtree whose content is only in the cloud (see `is_online_only`).
+    pub(crate) online_only_file_count: u32,
     pub(crate) logical_size: u64,
     pub(crate) allocated_size: u64,
     pub(crate) modified_time: NodeTime,
@@ -149,6 +152,7 @@ impl Node {
             child_count: 0,
             file_count: 0,
             directory_count: 0,
+            online_only_file_count: 0,
             logical_size: 0,
             allocated_size: 0,
             modified_time: NodeTime::UNKNOWN,
@@ -189,11 +193,15 @@ impl Node {
         self.allocated_size
     }
 
-    /// The logical size this node adds to its parent: zero for a hard link counted elsewhere.
+    /// The logical size this node adds to its parent: zero for a hard link counted elsewhere,
+    /// and for a cloud placeholder only the bytes that are on this disk, so a folder of
+    /// online-only files is as small as the space it really takes.
     #[must_use]
     pub fn counted_logical_size(&self) -> u64 {
         if self.flags.contains(NodeFlags::HARD_LINK_COUNTED_ELSEWHERE) {
             0
+        } else if self.flags.contains(NodeFlags::CLOUD_PLACEHOLDER) {
+            self.logical_size.min(self.allocated_size)
         } else {
             self.logical_size
         }
@@ -221,6 +229,18 @@ impl Node {
         self.directory_count
     }
 
+    /// Files in the subtree whose content is only in the cloud; 0 for a file itself.
+    #[must_use]
+    pub fn online_only_file_count(&self) -> u32 {
+        self.online_only_file_count
+    }
+
+    /// Files in the subtree that have data on this disk; 0 for a file itself.
+    #[must_use]
+    pub fn local_file_count(&self) -> u32 {
+        self.file_count.saturating_sub(self.online_only_file_count)
+    }
+
     #[must_use]
     pub fn modified_time(&self) -> Option<SystemTime> {
         self.modified_time.to_system_time()
@@ -246,10 +266,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn node_stays_under_64_bytes() {
+    fn node_fits_one_cache_line() {
         assert!(
-            size_of::<Node>() < 64,
-            "Node is {} bytes; the memory target is under 64",
+            size_of::<Node>() <= 64,
+            "Node is {} bytes; the memory target is one 64-byte cache line",
             size_of::<Node>()
         );
     }

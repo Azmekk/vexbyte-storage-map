@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useExplorerSelectionStore } from "@/features/explorer/useExplorerSelectionStore";
 import type { ScanId } from "@/lib/backend/scans";
 import { type SearchResult, searchNodes } from "@/lib/backend/tree";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
@@ -15,6 +16,7 @@ export type NodeSearchState =
 /** Searches names in the scan a moment after the user stops typing; drops outdated answers. */
 export function useNodeSearch(scanId: ScanId, query: string): NodeSearchState {
   const [searchState, setSearchState] = useState<NodeSearchState>({ status: "idle" });
+  const onlineOnly = useExplorerSelectionStore((state) => state.onlineOnlyVisibility);
   const trimmedQuery = query.trim();
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function useNodeSearch(scanId: ScanId, query: string): NodeSearchState {
 
     let isCurrentQuery = true;
     const timeoutId = window.setTimeout(() => {
-      searchNodes(scanId, trimmedQuery, SEARCH_RESULT_LIMIT).then(
+      searchNodes(scanId, trimmedQuery, SEARCH_RESULT_LIMIT, onlineOnly).then(
         (results) => {
           if (isCurrentQuery) {
             setSearchState({ status: "done", query: trimmedQuery, results });
@@ -53,7 +55,7 @@ export function useNodeSearch(scanId: ScanId, query: string): NodeSearchState {
       isCurrentQuery = false;
       window.clearTimeout(timeoutId);
     };
-  }, [scanId, trimmedQuery]);
+  }, [scanId, trimmedQuery, onlineOnly]);
 
   return searchState;
 }

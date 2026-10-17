@@ -30,6 +30,7 @@ A fast, good-looking disk space explorer for Windows with a built-in duplicate f
 - Keep rules (oldest, newest, preferred folder, shortest path) and a review screen with shell thumbnails.
 - Move duplicates to the Recycle Bin one file at a time, one group at a time, or every marked copy at once, always after a confirmation that lists exactly what moves.
 - Everything destructive goes to the Recycle Bin and is undoable. Cloud placeholder files are never downloaded.
+- OneDrive and other online-only files count only what is downloaded. Files with no data on this PC are hidden from the tree and charts until you choose to show them, so a folder never looks large because of files that are not on the disk.
 - Dark and light themes, reduced-motion support, keyboard shortcuts (press `?` in the app).
 
 ## Search syntax
@@ -44,6 +45,8 @@ reference in [docs/SEARCH.md](docs/SEARCH.md).
 
 Scans are read-only: both scan methods open drives and folders for reading only, and cloud
 placeholder files (OneDrive "online-only" files) are never opened, so nothing gets downloaded.
+They are also never counted as space: a placeholder adds only the bytes it has on this disk to
+its folder, and placeholders without any local data stay out of the tree unless you show them.
 Streamed cloud drives such as Google Drive for desktop are recognized and never scanned or searched
 for duplicates, because reading them would download their files. The
 only action that changes anything on disk is **Move to Recycle Bin**, from the explorer or the

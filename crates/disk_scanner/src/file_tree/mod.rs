@@ -9,6 +9,7 @@ mod node;
 mod node_flag_summary;
 mod node_removal;
 mod node_search;
+mod online_only_visibility;
 mod subtree_extraction;
 #[cfg(test)]
 pub(crate) mod test_trees;
@@ -24,6 +25,7 @@ pub(crate) use node::{NodeTime, OptionalNodeIndex};
 pub use node_flag_summary::NodeFlagSummary;
 pub use node_removal::RemovalSummary;
 pub use node_search::SearchResult;
+pub use online_only_visibility::OnlineOnlyVisibility;
 pub(crate) use subtree_extraction::names_are_equal_ignoring_case;
 pub use tree_arena::{FileTree, TreeTotals};
 pub use tree_queries::{

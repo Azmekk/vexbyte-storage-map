@@ -13,7 +13,8 @@ use std::process::ExitCode;
 use std::time::Instant;
 
 use disk_scanner::{
-    CancellationToken, ChildSortOrder, ScanMethod, ScanProgressUpdate, ScanTarget, scan,
+    CancellationToken, ChildSortOrder, OnlineOnlyVisibility, ScanMethod, ScanProgressUpdate,
+    ScanTarget, scan,
 };
 
 fn main() -> ExitCode {
@@ -90,13 +91,20 @@ fn main() -> ExitCode {
     );
 
     let started_at = Instant::now();
-    let page = tree.children_page(tree.root(), ChildSortOrder::LogicalSizeDescending, 0, 10);
+    let page = tree.children_page(
+        tree.root(),
+        ChildSortOrder::LogicalSizeDescending,
+        0,
+        10,
+        OnlineOnlyVisibility::Hidden,
+    );
     let children_elapsed = started_at.elapsed();
     let started_at = Instant::now();
-    let visualization = tree.visualization_subtree(tree.root(), 6, 0.002);
+    let visualization =
+        tree.visualization_subtree(tree.root(), 6, 0.002, OnlineOnlyVisibility::Hidden);
     let visualization_elapsed = started_at.elapsed();
     let started_at = Instant::now();
-    let search_results = tree.search_nodes("readme", 100);
+    let search_results = tree.search_nodes("readme", 100, OnlineOnlyVisibility::Hidden);
     let search_elapsed = started_at.elapsed();
     println!(
         "query timings      children {children_elapsed:.2?}, visualization {visualization_elapsed:.2?}, search {search_elapsed:.2?} ({} hits)",

@@ -29,9 +29,9 @@ pub use file_identity::FileIdentity;
 pub use file_tree::{
     BreadcrumbItem, ChildSortOrder, ChildSummary, ChildrenPage, FileCategoryShare,
     FileExtensionShare, FileSummary, FileTree, FileTypeBreakdown, Node, NodeDetails,
-    NodeFlagSummary, NodeFlags, NodeIndex, NodeKind, RemovalSummary, SearchResult, TreeQueryError,
-    TreeRemovalError, TreeTotals, VISUALIZATION_NODE_LIMIT, VisualizationNode,
-    VisualizationNodeKind,
+    NodeFlagSummary, NodeFlags, NodeIndex, NodeKind, OnlineOnlyVisibility, RemovalSummary,
+    SearchResult, TreeQueryError, TreeRemovalError, TreeTotals, VISUALIZATION_NODE_LIMIT,
+    VisualizationNode, VisualizationNodeKind,
 };
 pub use folder_walk::FolderWalkError;
 pub use mft::{

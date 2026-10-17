@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import type { ScanId } from "@/lib/backend/scans";
-import type { ChildSortOrder, FileCategory, NodeIndex } from "@/lib/backend/tree";
+import type {
+  ChildSortOrder,
+  FileCategory,
+  NodeIndex,
+  OnlineOnlyVisibility,
+} from "@/lib/backend/tree";
 import {
   createNavigationHistory,
   currentHistoryEntry,
@@ -10,6 +15,10 @@ import {
   pushHistoryEntry,
   replaceCurrentHistoryEntry,
 } from "./history/navigationHistory";
+import {
+  readStoredOnlineOnlyVisibility,
+  storeOnlineOnlyVisibility,
+} from "./onlineOnlyVisibilityPreference";
 
 export type VisualizationTab = "treemap" | "sunburst" | "fileTypes" | "largestFiles";
 export type TreemapColorMode = "category" | "depth";
@@ -52,6 +61,8 @@ type ExplorerSelectionState = {
   lastExpandedFolder: NodeIndex | null;
   childPageLimits: ReadonlyMap<NodeIndex, number>;
   sortOrder: ChildSortOrder;
+  /** Whether online-only cloud files (and folders holding nothing else) are listed. */
+  onlineOnlyVisibility: OnlineOnlyVisibility;
   isInspectorOpen: boolean;
   visualizationTab: VisualizationTab;
   treemapColorMode: TreemapColorMode;
@@ -70,6 +81,7 @@ type ExplorerSelectionState = {
   showMoreChildren: (folder: NodeIndex) => void;
   clearLastExpandedFolder: () => void;
   setSortOrder: (sortOrder: ChildSortOrder) => void;
+  setOnlineOnlyVisibility: (visibility: OnlineOnlyVisibility) => void;
   setInspectorOpen: (isOpen: boolean) => void;
   setVisualizationTab: (tab: VisualizationTab) => void;
   setTreemapColorMode: (colorMode: TreemapColorMode) => void;
@@ -120,6 +132,7 @@ export const useExplorerSelectionStore = create<ExplorerSelectionState>((set) =>
   lastExpandedFolder: null,
   childPageLimits: EMPTY_LIMIT_MAP,
   sortOrder: "logicalSizeDescending",
+  onlineOnlyVisibility: readStoredOnlineOnlyVisibility(),
   isInspectorOpen: true,
   visualizationTab: "treemap",
   treemapColorMode: "category",
@@ -231,6 +244,10 @@ export const useExplorerSelectionStore = create<ExplorerSelectionState>((set) =>
 
   clearLastExpandedFolder: () => set({ lastExpandedFolder: null }),
   setSortOrder: (sortOrder) => set({ sortOrder, lastExpandedFolder: null }),
+  setOnlineOnlyVisibility: (onlineOnlyVisibility) => {
+    storeOnlineOnlyVisibility(onlineOnlyVisibility);
+    set({ onlineOnlyVisibility, lastExpandedFolder: null });
+  },
   setInspectorOpen: (isInspectorOpen) => set({ isInspectorOpen }),
   setVisualizationTab: (visualizationTab) => set({ visualizationTab }),
   setTreemapColorMode: (treemapColorMode) => set({ treemapColorMode }),

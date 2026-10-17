@@ -48,7 +48,7 @@ export function useNodeActions(scanId: ScanId): NodeActions {
         ),
       copyPath: (target) =>
         void runFileAction("Could not copy the path", async () => {
-          const details = await getNodeDetails(scanId, target.node);
+          const details = await getNodeDetails(scanId, target.node, "shown");
           if (details.fullPath === null) {
             throw new Error(`${target.name} has no single location on disk.`);
           }

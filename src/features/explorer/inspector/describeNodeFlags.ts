@@ -25,7 +25,7 @@ const FLAG_BADGES: NodeFlagBadge[] = [
     key: "cloudPlaceholder",
     label: "In the cloud",
     explanation:
-      "Only a placeholder is on this PC; the content lives online and takes almost no space here.",
+      "The content lives online. Only what is downloaded counts toward the sizes shown here.",
     tone: "neutral",
   },
   {

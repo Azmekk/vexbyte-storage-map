@@ -19,6 +19,12 @@ import {
 } from "@/lib/backend/tree";
 import { type ScanQueryResult, useScanQuery } from "@/lib/queryCache/useScanQuery";
 import { treeQueryKeys } from "./treeQueryKeys";
+import { useExplorerSelectionStore } from "./useExplorerSelectionStore";
+
+/** The user's choice whether online-only cloud files are listed, shared by every tree query. */
+function useOnlineOnlyVisibility() {
+  return useExplorerSelectionStore((state) => state.onlineOnlyVisibility);
+}
 
 export function useChildrenPage(
   scanId: ScanId,
@@ -26,10 +32,12 @@ export function useChildrenPage(
   sortOrder: ChildSortOrder,
   limit: number,
 ): ScanQueryResult<ChildrenPage> {
-  const key = node === null ? null : treeQueryKeys.childrenPage(scanId, node, sortOrder, limit);
+  const onlineOnly = useOnlineOnlyVisibility();
+  const key =
+    node === null ? null : treeQueryKeys.childrenPage(scanId, node, sortOrder, limit, onlineOnly);
   const load = useCallback(
-    () => getChildren(scanId, node ?? 0, sortOrder, 0, limit),
-    [scanId, node, sortOrder, limit],
+    () => getChildren(scanId, node ?? 0, sortOrder, 0, limit, onlineOnly),
+    [scanId, node, sortOrder, limit, onlineOnly],
   );
   return useScanQuery(scanId, key, load);
 }
@@ -38,8 +46,12 @@ export function useNodeDetails(
   scanId: ScanId,
   node: NodeIndex | null,
 ): ScanQueryResult<NodeDetails> {
-  const key = node === null ? null : treeQueryKeys.nodeDetails(scanId, node);
-  const load = useCallback(() => getNodeDetails(scanId, node ?? 0), [scanId, node]);
+  const onlineOnly = useOnlineOnlyVisibility();
+  const key = node === null ? null : treeQueryKeys.nodeDetails(scanId, node, onlineOnly);
+  const load = useCallback(
+    () => getNodeDetails(scanId, node ?? 0, onlineOnly),
+    [scanId, node, onlineOnly],
+  );
   return useScanQuery(scanId, key, load);
 }
 
@@ -60,6 +72,7 @@ export function useVisualizationSubtree(
   scanId: ScanId,
   node: NodeIndex | null,
 ): ScanQueryResult<VisualizationNode> {
+  const onlineOnly = useOnlineOnlyVisibility();
   const key =
     node === null
       ? null
@@ -68,6 +81,7 @@ export function useVisualizationSubtree(
           node,
           VISUALIZATION_MAX_DEPTH,
           VISUALIZATION_MINIMUM_SHARE_OF_PARENT,
+          onlineOnly,
         );
   const load = useCallback(
     () =>
@@ -76,8 +90,9 @@ export function useVisualizationSubtree(
         node ?? 0,
         VISUALIZATION_MAX_DEPTH,
         VISUALIZATION_MINIMUM_SHARE_OF_PARENT,
+        onlineOnly,
       ),
-    [scanId, node],
+    [scanId, node, onlineOnly],
   );
   return useScanQuery(scanId, key, load);
 }
@@ -88,11 +103,14 @@ export function useLargestFiles(
   categoryFilter: FileCategory | null,
   limit: number,
 ): ScanQueryResult<FileSummary[]> {
+  const onlineOnly = useOnlineOnlyVisibility();
   const key =
-    node === null ? null : treeQueryKeys.largestFiles(scanId, node, categoryFilter, limit);
+    node === null
+      ? null
+      : treeQueryKeys.largestFiles(scanId, node, categoryFilter, limit, onlineOnly);
   const load = useCallback(
-    () => getLargestFiles(scanId, node ?? 0, categoryFilter, limit),
-    [scanId, node, categoryFilter, limit],
+    () => getLargestFiles(scanId, node ?? 0, categoryFilter, limit, onlineOnly),
+    [scanId, node, categoryFilter, limit, onlineOnly],
   );
   return useScanQuery(scanId, key, load);
 }
@@ -101,7 +119,11 @@ export function useFileTypeBreakdown(
   scanId: ScanId,
   node: NodeIndex | null,
 ): ScanQueryResult<FileTypeBreakdown> {
-  const key = node === null ? null : treeQueryKeys.fileTypeBreakdown(scanId, node);
-  const load = useCallback(() => getFileTypeBreakdown(scanId, node ?? 0), [scanId, node]);
+  const onlineOnly = useOnlineOnlyVisibility();
+  const key = node === null ? null : treeQueryKeys.fileTypeBreakdown(scanId, node, onlineOnly);
+  const load = useCallback(
+    () => getFileTypeBreakdown(scanId, node ?? 0, onlineOnly),
+    [scanId, node, onlineOnly],
+  );
   return useScanQuery(scanId, key, load);
 }

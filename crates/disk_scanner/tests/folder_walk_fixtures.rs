@@ -11,7 +11,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use disk_scanner::{
     CancellationToken, ChildSortOrder, FileTree, FolderWalkError, NoProgressReporting, NodeFlags,
-    NodeIndex, ScanError, ScanMethod, ScanPhase, ScanProgressUpdate, ScanTarget, scan,
+    NodeIndex, OnlineOnlyVisibility, ScanError, ScanMethod, ScanPhase, ScanProgressUpdate,
+    ScanTarget, scan,
 };
 
 /// A uniquely named folder under the temp directory, deleted on drop.
@@ -245,10 +246,12 @@ fn walks_a_fixture_with_nested_folders_hard_links_junctions_and_long_paths() {
         assert_eq!(totals.link_count, 1);
     }
 
-    let largest = tree.largest_files(tree.root(), None, 3).unwrap();
+    let largest = tree
+        .largest_files(tree.root(), None, 3, OnlineOnlyVisibility::Hidden)
+        .unwrap();
     assert!(largest.iter().all(|file| file.logical_size == 10_000));
 
-    let search_results = tree.search_nodes("LINK", 10);
+    let search_results = tree.search_nodes("LINK", 10, OnlineOnlyVisibility::Hidden);
     let mut found_names: Vec<_> = search_results
         .iter()
         .map(|result| result.name.as_str())
@@ -257,7 +260,13 @@ fn walks_a_fixture_with_nested_folders_hard_links_junctions_and_long_paths() {
     assert_eq!(found_names, ["links", "second-link.dat", "third-link.dat"]);
 
     let page = tree
-        .children_page(tree.root(), ChildSortOrder::LogicalSizeDescending, 0, 3)
+        .children_page(
+            tree.root(),
+            ChildSortOrder::LogicalSizeDescending,
+            0,
+            3,
+            OnlineOnlyVisibility::Hidden,
+        )
         .unwrap();
     assert_eq!(page.children.len(), 3);
     assert!(page.total_child_count >= 8);
@@ -267,7 +276,9 @@ fn walks_a_fixture_with_nested_folders_hard_links_junctions_and_long_paths() {
             .all(|pair| pair[0].logical_size >= pair[1].logical_size)
     );
 
-    let breakdown = tree.file_type_breakdown(tree.root()).unwrap();
+    let breakdown = tree
+        .file_type_breakdown(tree.root(), OnlineOnlyVisibility::Hidden)
+        .unwrap();
     assert_eq!(breakdown.total_logical_size, totals.logical_size);
     let txt = breakdown
         .extensions
@@ -276,7 +287,9 @@ fn walks_a_fixture_with_nested_folders_hard_links_junctions_and_long_paths() {
         .unwrap();
     assert_eq!(txt.file_count, 6);
 
-    let visualization = tree.visualization_subtree(tree.root(), 3, 0.05).unwrap();
+    let visualization = tree
+        .visualization_subtree(tree.root(), 3, 0.05, OnlineOnlyVisibility::Hidden)
+        .unwrap();
     let visualized_total: u64 = visualization
         .children
         .iter()
@@ -285,7 +298,10 @@ fn walks_a_fixture_with_nested_folders_hard_links_junctions_and_long_paths() {
     assert_eq!(visualized_total, totals.logical_size);
 
     let details = tree
-        .node_details(find_by_path(tree, "nested/a/b/c/deep.txt"))
+        .node_details(
+            find_by_path(tree, "nested/a/b/c/deep.txt"),
+            OnlineOnlyVisibility::Hidden,
+        )
         .unwrap();
     assert!(details.modified_at_unix_milliseconds.is_some());
     assert_eq!(

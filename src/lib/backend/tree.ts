@@ -8,6 +8,7 @@ import {
   type FileTypeBreakdown,
   type NodeDetails,
   type NodeIndex,
+  type OnlineOnlyVisibility,
   type ScanId,
   type SearchResult,
   type TreeCommandError,
@@ -29,6 +30,7 @@ export type {
   NodeFlagSummary,
   NodeIndex,
   NodeKind,
+  OnlineOnlyVisibility,
   SearchResult,
   TreeCommandError,
   VisualizationNode,
@@ -50,21 +52,29 @@ function describeTreeCommandError(commandError: TreeCommandError): string {
   }
 }
 
-/** One page of a folder's children in the requested order. */
+/**
+ * One page of a folder's children in the requested order. Online-only cloud files, and folders
+ * holding nothing else, are left out unless `onlineOnly` is `"shown"`.
+ */
 export async function getChildren(
   scanId: ScanId,
   node: NodeIndex,
   sort: ChildSortOrder,
   offset: number,
   limit: number,
+  onlineOnly: OnlineOnlyVisibility,
 ): Promise<ChildrenPage> {
-  const result = await commands.getChildren(scanId, node, sort, offset, limit);
+  const result = await commands.getChildren(scanId, node, sort, offset, limit, onlineOnly);
   return unwrapCommandResult(result, describeTreeCommandError);
 }
 
-/** Full path, sizes, counts, dates and flags of one item. */
-export async function getNodeDetails(scanId: ScanId, node: NodeIndex): Promise<NodeDetails> {
-  const result = await commands.getNodeDetails(scanId, node);
+/** Full path, sizes, counts, dates and flags of one item. The counts follow `onlineOnly`. */
+export async function getNodeDetails(
+  scanId: ScanId,
+  node: NodeIndex,
+  onlineOnly: OnlineOnlyVisibility,
+): Promise<NodeDetails> {
+  const result = await commands.getNodeDetails(scanId, node, onlineOnly);
   return unwrapCommandResult(result, describeTreeCommandError);
 }
 
@@ -80,12 +90,14 @@ export async function getVisualizationSubtree(
   node: NodeIndex,
   maxDepth: number,
   minimumShareOfParent: number,
+  onlineOnly: OnlineOnlyVisibility,
 ): Promise<VisualizationNode> {
   const result = await commands.getVisualizationSubtree(
     scanId,
     node,
     maxDepth,
     minimumShareOfParent,
+    onlineOnly,
   );
   return unwrapCommandResult(result, describeTreeCommandError);
 }
@@ -96,8 +108,9 @@ export async function getLargestFiles(
   node: NodeIndex,
   categoryFilter: FileCategory | null,
   limit: number,
+  onlineOnly: OnlineOnlyVisibility,
 ): Promise<FileSummary[]> {
-  const result = await commands.getLargestFiles(scanId, node, categoryFilter, limit);
+  const result = await commands.getLargestFiles(scanId, node, categoryFilter, limit, onlineOnly);
   return unwrapCommandResult(result, describeTreeCommandError);
 }
 
@@ -105,8 +118,9 @@ export async function getLargestFiles(
 export async function getFileTypeBreakdown(
   scanId: ScanId,
   node: NodeIndex,
+  onlineOnly: OnlineOnlyVisibility,
 ): Promise<FileTypeBreakdown> {
-  const result = await commands.getFileTypeBreakdown(scanId, node);
+  const result = await commands.getFileTypeBreakdown(scanId, node, onlineOnly);
   return unwrapCommandResult(result, describeTreeCommandError);
 }
 
@@ -115,7 +129,8 @@ export async function searchNodes(
   scanId: ScanId,
   query: string,
   limit: number,
+  onlineOnly: OnlineOnlyVisibility,
 ): Promise<SearchResult[]> {
-  const result = await commands.searchNodes(scanId, query, limit);
+  const result = await commands.searchNodes(scanId, query, limit, onlineOnly);
   return unwrapCommandResult(result, describeTreeCommandError);
 }

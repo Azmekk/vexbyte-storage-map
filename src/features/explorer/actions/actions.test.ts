@@ -29,6 +29,7 @@ function recycleResult(overrides: Partial<TreeRecycleResult["recycleResult"]>): 
       inaccessibleDirectoryCount: 0,
       cloudPlaceholderFileCount: 0,
       cloudPlaceholderLogicalSize: 0,
+      onlineOnlyFileCount: 0,
       additionalHardLinkCount: 0,
       linkCount: 0,
     },

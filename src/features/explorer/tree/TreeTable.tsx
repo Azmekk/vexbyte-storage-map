@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowUpIcon, FolderOpenIcon, ShieldAlertIcon } from "lucide-react";
+import { ArrowUpIcon, CloudIcon, FolderOpenIcon, ShieldAlertIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,9 @@ export function TreeTable({ scanId, shownFolder, parentOfShownFolder }: TreeTabl
   const actions = useNodeActions(scanId);
   const sortOrder = useExplorerSelectionStore((state) => state.sortOrder);
   const setSortOrder = useExplorerSelectionStore((state) => state.setSortOrder);
+  const setOnlineOnlyVisibility = useExplorerSelectionStore(
+    (state) => state.setOnlineOnlyVisibility,
+  );
   const scrollElementRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
@@ -51,17 +54,31 @@ export function TreeTable({ scanId, shownFolder, parentOfShownFolder }: TreeTabl
       <TreeTableHeader sortOrder={sortOrder} onSortOrderChange={setSortOrder} />
       {model.emptyFolder !== null ? (
         <EmptyState
-          icon={model.emptyFolder.isWarning ? ShieldAlertIcon : FolderOpenIcon}
+          icon={
+            model.emptyFolder.isWarning
+              ? ShieldAlertIcon
+              : model.emptyFolder.hasHiddenOnlineOnlyFiles
+                ? CloudIcon
+                : FolderOpenIcon
+          }
           tone={model.emptyFolder.isWarning ? "warning" : "neutral"}
           title={model.emptyFolder.title}
           description={model.emptyFolder.description}
           actions={
-            model.goUp === null ? undefined : (
-              <Button variant="outline" onClick={model.goUp}>
-                <ArrowUpIcon />
-                Go up
-              </Button>
-            )
+            <>
+              {model.emptyFolder.hasHiddenOnlineOnlyFiles && (
+                <Button variant="secondary" onClick={() => setOnlineOnlyVisibility("shown")}>
+                  <CloudIcon />
+                  Show online-only files
+                </Button>
+              )}
+              {model.goUp !== null && (
+                <Button variant="outline" onClick={model.goUp}>
+                  <ArrowUpIcon />
+                  Go up
+                </Button>
+              )}
+            </>
           }
         />
       ) : (

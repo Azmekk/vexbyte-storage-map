@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use super::node::{NodeIndex, NodeKind};
+use super::online_only_visibility::OnlineOnlyVisibility;
 use super::tree_arena::FileTree;
 use super::tree_query_error::TreeQueryError;
 
@@ -53,7 +54,7 @@ struct DirectoryToExpand {
 impl FileTree {
     /// A nested view of `node` down to `max_depth` levels, where children smaller than
     /// `minimum_share_of_parent` (0 to 1) of their parent are merged into one
-    /// "N smaller items" block.
+    /// "N smaller items" block. Items that `visibility` hides are left out altogether.
     ///
     /// Levels are expanded breadth first until [`VISUALIZATION_NODE_LIMIT`] nodes are reached,
     /// so the top levels are always complete and deep levels are cut first.
@@ -66,6 +67,7 @@ impl FileTree {
         node: NodeIndex,
         max_depth: u32,
         minimum_share_of_parent: f64,
+        visibility: OnlineOnlyVisibility,
     ) -> Result<VisualizationNode, TreeQueryError> {
         self.live_node(node)?;
         let max_depth = max_depth.min(MAXIMUM_VISUALIZATION_DEPTH);
@@ -98,6 +100,7 @@ impl FileTree {
                 directory.tree_node,
                 minimum_share_of_parent,
                 remaining_budget,
+                visibility,
             );
             for (child_tree_node, child_node) in expansion.shown_children {
                 let child_slot = flat_nodes.len();
@@ -153,6 +156,7 @@ impl FileTree {
         directory: NodeIndex,
         minimum_share_of_parent: f64,
         remaining_budget: usize,
+        visibility: OnlineOnlyVisibility,
     ) -> DirectoryExpansion {
         let directory_size = self.nodes[directory.as_usize()].logical_size;
         #[allow(
@@ -163,7 +167,7 @@ impl FileTree {
         let size_threshold = (directory_size as f64 * minimum_share_of_parent).ceil() as u64;
 
         let mut children: Vec<(u64, NodeIndex)> = self
-            .children(directory)
+            .shown_children(directory, visibility)
             .map(|child| (self.nodes[child.as_usize()].counted_logical_size(), child))
             .collect();
         children.sort_unstable_by(|first, second| second.cmp(first));
@@ -254,8 +258,10 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
-    use crate::file_tree::test_trees::sample_tree;
+    use crate::file_tree::test_trees::{cloud_tree, sample_tree};
     use crate::file_tree::{DirectoryKey, FileTreeBuilder, NewEntry, NodeFlags};
+
+    const SHOWN: OnlineOnlyVisibility = OnlineOnlyVisibility::Shown;
 
     fn count_nodes(node: &VisualizationNode) -> usize {
         1 + node.children.iter().map(count_nodes).sum::<usize>()
@@ -265,7 +271,9 @@ mod tests {
     fn merges_small_children_and_respects_depth() {
         let tree = sample_tree();
 
-        let subtree = tree.visualization_subtree(tree.root(), 1, 0.1).unwrap();
+        let subtree = tree
+            .visualization_subtree(tree.root(), 1, 0.1, SHOWN)
+            .unwrap();
 
         let names: Vec<_> = subtree
             .children
@@ -280,7 +288,9 @@ mod tests {
             "depth 1 stops below the first level"
         );
 
-        let deeper = tree.visualization_subtree(tree.root(), 3, 0.0).unwrap();
+        let deeper = tree
+            .visualization_subtree(tree.root(), 3, 0.0, SHOWN)
+            .unwrap();
         let photos = &deeper.children[0];
         assert_eq!(photos.children.len(), 3);
         assert_eq!(photos.children[0].name, "raw");
@@ -308,7 +318,9 @@ mod tests {
         }
         let tree = builder.finish();
 
-        let subtree = tree.visualization_subtree(tree.root(), 5, 0.0).unwrap();
+        let subtree = tree
+            .visualization_subtree(tree.root(), 5, 0.0, SHOWN)
+            .unwrap();
 
         assert_eq!(count_nodes(&subtree), VISUALIZATION_NODE_LIMIT);
         let smaller_items = subtree.children.last().unwrap();
@@ -319,5 +331,34 @@ mod tests {
             .map(|child| child.logical_size)
             .sum();
         assert_eq!(children_total, subtree.logical_size);
+    }
+
+    #[test]
+    fn hidden_online_only_items_are_not_even_counted_as_smaller_items() {
+        let tree = cloud_tree();
+
+        let hidden = tree
+            .visualization_subtree(tree.root(), 2, 0.0, OnlineOnlyVisibility::Hidden)
+            .unwrap();
+        let names: Vec<_> = hidden
+            .children
+            .iter()
+            .map(|child| child.name.as_str())
+            .collect();
+        assert_eq!(names, ["partial.iso", "Mixed", "2 smaller items"]);
+        assert_eq!(
+            hidden.children[2].merged_item_count, 2,
+            "Empty and zero.txt"
+        );
+
+        let shown = tree
+            .visualization_subtree(tree.root(), 2, 0.0, SHOWN)
+            .unwrap();
+        let smaller_items = shown.children.last().unwrap();
+        assert_eq!(
+            smaller_items.merged_item_count, 5,
+            "the online-only items take no space, so they end up among the smaller items"
+        );
+        assert_eq!(smaller_items.logical_size, 0);
     }
 }
