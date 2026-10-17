@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useIsElevated } from "@/features/scan/useElevationStatus";
 import { staggeredChildrenVariants } from "@/lib/motion/transitions";
 import { NoVolumesState } from "./NoVolumesState";
 import type { VolumesState } from "./useVolumes";
@@ -15,6 +16,8 @@ type HomeScreenProps = {
 };
 
 export function HomeScreen({ volumesState, onRetryLoadingVolumes }: HomeScreenProps) {
+  const isElevated = useIsElevated();
+
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-6 p-6">
       <header className="grid gap-1">
@@ -49,7 +52,7 @@ export function HomeScreen({ volumesState, onRetryLoadingVolumes }: HomeScreenPr
           animate="visible"
         >
           {volumesState.volumes.map((volume) => (
-            <VolumeCard key={volume.mountPoint} volume={volume} />
+            <VolumeCard key={volume.mountPoint} volume={volume} isElevated={isElevated} />
           ))}
         </motion.div>
       )}

@@ -5,13 +5,15 @@ import type { VolumeDescription } from "./describeVolume";
 
 type VolumeSidebarItemProps = {
   volume: VolumeDescription;
+  onSelect: () => void;
 };
 
-export function VolumeSidebarItem({ volume }: VolumeSidebarItemProps) {
+export function VolumeSidebarItem({ volume, onSelect }: VolumeSidebarItemProps) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         className="h-auto py-2"
+        onClick={onSelect}
         tooltip={`${volume.displayName} (${volume.driveLabel}) · ${volume.freeSizeText} free`}
       >
         <DriveTypeIcon driveType={volume.driveType} />

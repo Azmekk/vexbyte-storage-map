@@ -1,7 +1,6 @@
-import { ScanSearchIcon, ZapIcon } from "lucide-react";
+import { ZapIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScanTargetButton } from "@/features/scan/ScanTargetButton";
 import { cardHoverLift, fadeSlideInVariants } from "@/lib/motion/transitions";
 import { DriveTypeIcon } from "./DriveTypeIcon";
 import type { VolumeDescription } from "./describeVolume";
@@ -18,9 +17,10 @@ import { VolumeUsageDonut } from "./VolumeUsageDonut";
 
 type VolumeCardProps = {
   volume: VolumeDescription;
+  isElevated: boolean | null;
 };
 
-export function VolumeCard({ volume }: VolumeCardProps) {
+export function VolumeCard({ volume, isElevated }: VolumeCardProps) {
   return (
     <motion.div variants={fadeSlideInVariants} whileHover={cardHoverLift}>
       <Card className="h-full">
@@ -42,7 +42,7 @@ export function VolumeCard({ volume }: VolumeCardProps) {
           {volume.supportsFastScan && (
             <Badge variant="secondary" className="mt-3 w-fit">
               <ZapIcon />
-              Fast scan available as admin
+              {isElevated === true ? "Fast scan ready" : "Fast scan available as admin"}
             </Badge>
           )}
         </CardHeader>
@@ -65,17 +65,12 @@ export function VolumeCard({ volume }: VolumeCardProps) {
           </dl>
         </CardContent>
         <CardFooter className="mt-auto">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="w-full">
-                <Button size="lg" className="w-full" disabled>
-                  <ScanSearchIcon />
-                  Scan {volume.driveLabel}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Coming soon</TooltipContent>
-          </Tooltip>
+          <ScanTargetButton
+            mountPoint={volume.mountPoint}
+            label={volume.driveLabel}
+            supportsFastScan={volume.supportsFastScan}
+            isElevated={isElevated}
+          />
         </CardFooter>
       </Card>
     </motion.div>
