@@ -701,7 +701,7 @@ dependencies = [
 
 [[package]]
 name = "disk_scanner"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bitflags 2.13.2",
  "file_categories",
@@ -807,7 +807,7 @@ checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
 name = "duplicate_finder"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bitflags 2.13.2",
  "blake3",
@@ -899,7 +899,7 @@ dependencies = [
 
 [[package]]
 name = "file_actions"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "png 0.18.1",
  "serde",
@@ -913,7 +913,7 @@ dependencies = [
 
 [[package]]
 name = "file_categories"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde",
  "specta",
@@ -4102,7 +4102,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vexbyte_storage_map"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "disk_scanner",
  "duplicate_finder",
