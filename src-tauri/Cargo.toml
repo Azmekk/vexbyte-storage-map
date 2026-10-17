@@ -43,6 +43,7 @@ windows = { workspace = true, features = [
 
 [dev-dependencies]
 serde_json.workspace = true
+tauri = { workspace = true, features = ["protocol-asset", "test"] }
 
 [lints]
 workspace = true

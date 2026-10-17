@@ -6,12 +6,13 @@ use disk_scanner::{FileTree, NodeIndex, RemovalSummary, TreeQueryError, TreeTota
 use file_actions::RecycleResult;
 use serde::Serialize;
 use specta::Type;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
 use crate::app_state::AppState;
 use crate::duplicate_search_registry::{DuplicateSearchId, DuplicateSearchLookupError};
 use crate::error_details::describe_error_with_sources;
 use crate::scan_registry::{ScanId, ScanLookupError, ScanStatus};
+use crate::thumbnail_asset_scope::allow_thumbnail_folder;
 
 #[derive(Debug, thiserror::Error, Serialize, Type)]
 #[serde(
@@ -296,23 +297,31 @@ fn resolve_recyclable_paths(
 #[tauri::command]
 #[specta::specta]
 pub async fn get_thumbnail(
+    app: AppHandle,
     state: State<'_, AppState>,
     path: PathBuf,
     size: u32,
 ) -> Result<ThumbnailHandle, FileActionCommandError> {
     let thumbnail_cache = state.thumbnail_cache.clone();
+    let asset_scope = app.asset_protocol_scope();
 
     tauri::async_runtime::spawn_blocking(move || {
-        thumbnail_cache
+        let thumbnail = thumbnail_cache
             .cached_thumbnail_for(&path, size)
-            .map(|thumbnail| ThumbnailHandle {
-                png_path: thumbnail.path,
-                is_file_type_icon: thumbnail.is_file_type_icon,
-            })
             .map_err(|error| FileActionCommandError::ThumbnailFailed {
                 path: path.display().to_string(),
                 details: describe_error_with_sources(&error),
-            })
+            })?;
+        if let Err(error) = allow_thumbnail_folder(&asset_scope, &thumbnail.path) {
+            tracing::warn!(
+                error = %describe_error_with_sources(&error),
+                "the thumbnail may not load through the asset protocol"
+            );
+        }
+        Ok(ThumbnailHandle {
+            png_path: thumbnail.path,
+            is_file_type_icon: thumbnail.is_file_type_icon,
+        })
     })
     .await?
 }

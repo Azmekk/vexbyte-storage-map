@@ -11,8 +11,8 @@ use crate::startup_arguments::StartupScanRequest;
 /// The folder below the user's local app data folder (`%LOCALAPPDATA%` on Windows) that holds
 /// the app's own data and caches. The asset protocol scope in `tauri.conf.json` names the same
 /// folder through `$LOCALDATA`; keep both in sync.
-const APP_DATA_FOLDER_NAMES: [&str; 2] = ["Vexbyte", "Storage Map"];
-const THUMBNAIL_FOLDER_NAME: &str = "thumbnails";
+pub(crate) const APP_DATA_FOLDER_NAMES: [&str; 2] = ["Vexbyte", "Storage Map"];
+pub(crate) const THUMBNAIL_FOLDER_NAME: &str = "thumbnails";
 
 /// State shared by every command, managed by Tauri. The file trees and duplicate groups stay in
 /// Rust; the frontend only queries small views of them.
@@ -54,7 +54,7 @@ impl AppState {
 }
 
 /// `%LOCALAPPDATA%\Vexbyte\Storage Map\thumbnails` for a local data folder of `%LOCALAPPDATA%`.
-fn thumbnail_directory_in(local_data_directory: &Path) -> PathBuf {
+pub(crate) fn thumbnail_directory_in(local_data_directory: &Path) -> PathBuf {
     let mut directory = local_data_directory.to_path_buf();
     directory.extend(APP_DATA_FOLDER_NAMES);
     directory.push(THUMBNAIL_FOLDER_NAME);

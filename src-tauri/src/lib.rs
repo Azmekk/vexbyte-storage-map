@@ -16,6 +16,7 @@ mod scan_registry;
 mod search_index_builders;
 mod search_index_registry;
 mod startup_arguments;
+mod thumbnail_asset_scope;
 
 use app_state::AppState;
 use tauri::Manager;
