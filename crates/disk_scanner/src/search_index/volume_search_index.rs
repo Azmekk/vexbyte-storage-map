@@ -109,8 +109,10 @@ impl VolumeSearchIndex {
     ///
     /// Names are compared ignoring case, as NTFS does, so `c:\users\ME\notes.TXT` finds
     /// `C:\Users\me\notes.txt`. When several nodes have that path (which a case-sensitive
-    /// folder allows), the first in the arena is returned. Scans the names of all nodes in
-    /// parallel: a few milliseconds for three million nodes.
+    /// folder allows), the first in the arena is returned. Items inside synthetic grouping
+    /// folders such as `$MFT` in "NTFS metadata" are not found, because they are NTFS
+    /// metadata that cannot be shown or opened. Scans the names of all nodes in parallel: a
+    /// few milliseconds for three million nodes.
     #[must_use]
     pub fn find_searchable_node_by_path(&self, path: &Path) -> Option<NodeIndex> {
         let path_below_root = path.strip_prefix(&self.root_path).ok()?;
@@ -138,8 +140,8 @@ impl VolumeSearchIndex {
         Some(NodeIndex::from_usize(found))
     }
 
-    /// True when the folders on the path of `position` (below the root, without synthetic
-    /// folders) are exactly `wanted_names`, ignoring case.
+    /// True when the folders on the path of `position` below the root are exactly
+    /// `wanted_names`, ignoring case, and none of them is synthetic.
     fn has_ancestor_names(&self, position: usize, wanted_names: &[&str]) -> bool {
         let mut remaining_names = wanted_names;
         let mut current = self.nodes[position].parent();
@@ -148,15 +150,16 @@ impl VolumeSearchIndex {
             let Some(ancestor_parent) = ancestor_node.parent() else {
                 break;
             };
-            if !ancestor_node.flags.contains(SearchNodeFlags::SYNTHETIC) {
-                let Some((wanted_name, rest)) = remaining_names.split_last() else {
-                    return false;
-                };
-                if !names_are_equal_ignoring_case(self.name(ancestor), wanted_name) {
-                    return false;
-                }
-                remaining_names = rest;
+            if ancestor_node.flags.contains(SearchNodeFlags::SYNTHETIC) {
+                return false;
             }
+            let Some((wanted_name, rest)) = remaining_names.split_last() else {
+                return false;
+            };
+            if !names_are_equal_ignoring_case(self.name(ancestor), wanted_name) {
+                return false;
+            }
+            remaining_names = rest;
             current = Some(ancestor_parent);
         }
         remaining_names.is_empty()
@@ -364,9 +367,8 @@ mod tests {
         let index = index_of(builder);
 
         assert_eq!(names_in_path_order(&index), ["$MFT"]);
-        let mft = index.find_searchable_node_by_path(Path::new(r"C:\$MFT"));
-        assert_eq!(index.name(mft.unwrap()), "$MFT");
         for path in [
+            r"C:\$MFT",
             r"C:\NTFS metadata\$MFT",
             r"C:\NTFS metadata",
             r"C:\orphan.txt",

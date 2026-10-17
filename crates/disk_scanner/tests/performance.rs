@@ -244,6 +244,16 @@ fn search_index_meets_the_targets_on_three_million_nodes() {
         "the index takes {index_bytes_per_node:.1} bytes per node, target under 60"
     );
 
+    let deep_file = std::path::Path::new(r"C:\folder-1\folder-123\folder-12345\file-12345-7.jpg");
+    for _ in 0..3 {
+        let found = time(
+            "find a search hit by its path",
+            Duration::from_millis(10),
+            || index.find_searchable_node_by_path(deep_file),
+        );
+        assert!(found.is_some());
+    }
+
     let substring_target = Duration::from_millis(50);
     let glob_target = Duration::from_millis(200);
     assert_search_time(
