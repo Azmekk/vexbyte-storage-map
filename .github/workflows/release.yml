@@ -53,5 +53,5 @@ jobs:
           releaseBody: "Download the setup .exe below to install this version. Windows 10 and 11, 64-bit."
           releaseDraft: false
           # 0.x versions are pre-releases.
-          prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
+          prerelease: false
           args: --bundles nsis
