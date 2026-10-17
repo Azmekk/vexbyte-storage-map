@@ -33,6 +33,7 @@ pnpm tauri dev            # run the app
 pnpm check                # biome ci
 pnpm typecheck            # tsc --noEmit
 pnpm test                 # vitest run
+pnpm bindings             # regenerate src/lib/backend/generated.ts after changing commands or IPC types
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vexbyte Storage Map</title>
+    <script>
+      // Applies the saved theme before first paint. Keep the key in sync with src/app/themePreference.ts.
+      try {
+        const themePreference = localStorage.getItem("vsm.themePreference") ?? "system";
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const isDark = themePreference === "dark" || (themePreference !== "light" && prefersDark);
+        document.documentElement.classList.toggle("dark", isDark);
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
