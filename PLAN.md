@@ -627,7 +627,7 @@ Functions in `platform/` take and return only crate-owned types, never `windows:
 
 - `windows`, `windows-sys` and `libc` appear only under `[target.'cfg(windows)'.dependencies]` (and later `cfg(unix)`) in Cargo.toml.
 - `#[cfg(windows)]` is allowed only in `platform/mod.rs`, in the `mft` module root (the MFT scanner is the one legitimately Windows-only feature, gated as a whole), in `src-tauri/src/elevation.rs`, and in Cargo.toml. Nowhere else. A CI grep enforces this.
-- No path handling that assumes backslashes or drive letters outside `platform/`. Use `Path` and `PathBuf` methods. The `\?\` extended-length prefix is applied inside `platform/windows/` only.
+- No path handling that assumes backslashes or drive letters outside `platform/`. Use `Path` and `PathBuf` methods. The `\\?\` extended-length prefix is applied inside `platform/windows/` only.
 - Use existing cross-platform crates where they already wrap the OS correctly: `trash` for the Recycle Bin (its Windows backend uses `IFileOperation` with undo) and `dirs` for the known folders (Pictures, Videos, Music, Documents, Downloads, Desktop). Reveal in file manager, thumbnails (`IShellItemImageFactory`), SSD seek-penalty detection, cloud-placeholder detection and the MFT scanner stay as Windows implementations inside `platform/windows/`.
 - Fast scan is exposed to the UI purely as a capability (`supports_fast_scan` on `VolumeSummary`). The UI already handles "fast scan unavailable" for exFAT or unelevated; other platforms hit the same path.
 - CI runs `cargo check -p disk_scanner -p duplicate_finder -p file_actions` on `ubuntu-latest` with `continue-on-error: true`. It is expected to fail until unix backends exist; its purpose is to make Windows assumptions visible early.
