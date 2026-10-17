@@ -85,6 +85,9 @@ bitflags::bitflags! {
         const SYNTHETIC = 1 << 9;
         /// Removed from the tree after it was moved to the Recycle Bin.
         const REMOVED = 1 << 10;
+        /// The synthetic "Unlinked items" directory: where its entries really live on disk is
+        /// unknown, so neither it nor anything below it has a path.
+        const LOCATION_UNKNOWN = 1 << 11;
     }
 }
 

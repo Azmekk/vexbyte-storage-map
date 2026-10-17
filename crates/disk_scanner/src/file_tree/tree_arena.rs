@@ -136,6 +136,11 @@ impl FileTree {
         let mut current = index;
         while let Some(parent) = self.node(current)?.parent() {
             let current_node = self.node(current)?;
+            // An entry whose parent directory was not found would otherwise get a path
+            // directly below the root, which names a different item (or nothing).
+            if current_node.flags.contains(NodeFlags::LOCATION_UNKNOWN) {
+                return None;
+            }
             if !current_node.flags.contains(NodeFlags::SYNTHETIC) {
                 names_from_node_to_root.push(self.names.name(current_node.name));
             }

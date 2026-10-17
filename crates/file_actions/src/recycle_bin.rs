@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use serde::Serialize;
 use specta::Type;
@@ -36,6 +36,9 @@ pub enum RecycleFailureReason {
     /// Removable drives and network shares have no Recycle Bin; the file would be deleted for
     /// good, so it is left alone.
     NoRecycleBinOnDrive,
+    /// A name ends with a dot or a space. The shell drops those when it parses a path, so it
+    /// would act on a different item (`notes.` would become `notes`); the item is left alone.
+    NameNotSupportedByShell,
     /// The shell reported an error, or the user cancelled a shell prompt, and the file is still
     /// in place.
     StillInPlace,
@@ -123,7 +126,11 @@ fn prepare_recycle(
             continue;
         }
 
-        let refusal_reason = if path.is_absolute() {
+        let refusal_reason = if !path.is_absolute() {
+            Some(RecycleFailureReason::NotAbsolute)
+        } else if has_name_the_shell_would_rewrite(path) {
+            Some(RecycleFailureReason::NameNotSupportedByShell)
+        } else {
             match read_stamp(path) {
                 None => Some(RecycleFailureReason::NotFound),
                 Some(_) if !has_recycle_bin(path) => {
@@ -138,8 +145,6 @@ fn prepare_recycle(
                     None
                 }
             }
-        } else {
-            Some(RecycleFailureReason::NotAbsolute)
         };
 
         if let Some(reason) = refusal_reason {
@@ -152,6 +157,17 @@ fn prepare_recycle(
     }
 
     preparation
+}
+
+/// Win32 path parsing, which the shell uses, strips trailing dots and spaces from every name.
+fn has_name_the_shell_would_rewrite(path: &Path) -> bool {
+    path.components().any(|component| match component {
+        Component::Normal(name) => {
+            let name = name.to_string_lossy();
+            name.ends_with('.') || name.ends_with(' ')
+        }
+        _ => false,
+    })
 }
 
 fn summarize_recycle_outcome(
@@ -240,6 +256,32 @@ mod tests {
                 size: 10
             }]
         );
+    }
+
+    #[test]
+    fn refuses_names_the_shell_would_turn_into_another_item() {
+        let paths = vec![
+            absolute("notes."),
+            absolute("folder ").join("inside.jpg"),
+            absolute("photo.jpg"),
+        ];
+
+        let preparation = prepare_recycle(&paths, |_| Some(file_of_size(1)), |_| true);
+
+        let refusals: Vec<RecycleFailureReason> = preparation
+            .refused
+            .iter()
+            .map(|failure| failure.reason)
+            .collect();
+        assert_eq!(
+            refusals,
+            vec![
+                RecycleFailureReason::NameNotSupportedByShell,
+                RecycleFailureReason::NameNotSupportedByShell,
+            ]
+        );
+        assert_eq!(preparation.paths_to_move.len(), 1);
+        assert_eq!(preparation.paths_to_move[0].path, absolute("photo.jpg"));
     }
 
     #[test]

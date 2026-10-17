@@ -96,8 +96,12 @@ fn extents_without_length_limit(runs: &[DataRun], bytes_per_cluster: u32) -> Vec
     runs.iter()
         .filter_map(|run| {
             Some(MftExtent {
-                volume_offset: run.first_cluster? * u64::from(bytes_per_cluster),
-                length: run.cluster_count * u64::from(bytes_per_cluster),
+                volume_offset: run
+                    .first_cluster?
+                    .saturating_mul(u64::from(bytes_per_cluster)),
+                length: run
+                    .cluster_count
+                    .saturating_mul(u64::from(bytes_per_cluster)),
             })
         })
         .collect()
@@ -111,7 +115,7 @@ fn volume_offset_of_record(
     let mut offset_in_mft = record_number.checked_mul(record_size as u64)?;
     for extent in extents {
         if offset_in_mft < extent.length {
-            return Some(extent.volume_offset + offset_in_mft);
+            return extent.volume_offset.checked_add(offset_in_mft);
         }
         offset_in_mft -= extent.length;
     }
@@ -125,7 +129,7 @@ fn read_exactly<Volume: VolumeBytes>(
 ) -> Result<(), MftScanError> {
     let mut filled = 0;
     while filled < buffer.len() {
-        let read_offset = offset + filled as u64;
+        let read_offset = offset.saturating_add(filled as u64);
         let bytes_read = volume
             .read_at(read_offset, &mut buffer[filled..])
             .map_err(|source| MftScanError::VolumeReadFailed {

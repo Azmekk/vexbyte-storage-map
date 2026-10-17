@@ -180,6 +180,13 @@ pub fn remove_recycled_files(groups: &mut Vec<DuplicateGroup>, recycled_paths: &
             .files
             .retain(|file| !recycled_paths.contains(file.path.as_path()));
         group.wasted_bytes = group.file_size * (group.files.len().saturating_sub(1) as u64);
+        // The recycled list may have included copies marked "keep" (it is sent explicitly, not
+        // derived from the flags). Every remaining copy then stays until the user chooses again.
+        if group.kept_file_count() == 0 {
+            for file in &mut group.files {
+                file.keep = true;
+            }
+        }
     }
     groups.retain(|group| group.files.len() >= 2);
 }
@@ -325,5 +332,28 @@ mod tests {
         remove_recycled_files(&mut partly_recycled, &[PathBuf::from("b4")]);
         assert_eq!(partly_recycled[1].files.len(), 3);
         assert_eq!(partly_recycled[1].wasted_bytes, 20);
+    }
+
+    #[test]
+    fn a_group_never_ends_up_without_a_kept_copy_after_a_recycle() {
+        let mut groups = sample_groups();
+        apply_keep_rule(&mut groups, &KeepRule::Oldest);
+        assert!(groups[1].files[0].keep);
+
+        // The explicit list removed the kept copy b1 and left b2..b4, all marked for removal.
+        let plan = plan_removal(&groups, &[PathBuf::from("b1")]).unwrap();
+        assert_eq!(plan.removals().len(), 1);
+        remove_recycled_files(&mut groups, &[PathBuf::from("b1")]);
+
+        let remaining = groups
+            .iter()
+            .find(|group| group.id == DuplicateGroupId(1))
+            .unwrap();
+        assert_eq!(remaining.files.len(), 3);
+        assert_eq!(remaining.kept_file_count(), 3);
+        assert_eq!(
+            selection_summary(std::slice::from_ref(remaining)),
+            DuplicateSelectionSummary::default()
+        );
     }
 }

@@ -1,6 +1,6 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
-use std::sync::PoisonError;
+use std::sync::{Arc, PoisonError};
 
 use duplicate_finder::{
     ChangedFile, DuplicateGroup, DuplicateGroupId, DuplicateSearchProgress,
@@ -308,7 +308,11 @@ pub async fn recycle_duplicates(
         return Ok(DuplicateRecycleResult::default());
     }
 
+    let recycle_bin_operations = Arc::clone(&state.recycle_bin_operations);
     let (revalidation, recycle_result) = tauri::async_runtime::spawn_blocking(move || {
+        let _exclusive_recycle = recycle_bin_operations
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
         let revalidation = duplicate_finder::revalidate_before_removal(&plan);
         let paths_to_remove = revalidation.paths_to_remove();
         let recycle_result = if paths_to_remove.is_empty() {

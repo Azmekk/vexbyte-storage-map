@@ -19,6 +19,8 @@ const RECYCLE_FAILURE_REASON_TEXT: Record<RecycleFailureReason, string> = {
   notFound: "The file is no longer there.",
   noRecycleBinOnDrive:
     "This drive has no Recycle Bin, so the file would be deleted for good. It was left alone.",
+  nameNotSupportedByShell:
+    "Its name ends with a dot or a space, which Windows cannot handle safely. It was left alone.",
   stillInPlace: "Windows could not move it. It is still in place.",
 };
 

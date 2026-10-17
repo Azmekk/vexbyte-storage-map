@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::PoisonError;
+use std::sync::{Arc, PoisonError};
 
 use disk_scanner::{FileTree, NodeIndex, RemovalSummary, TreeQueryError, TreeTotals};
 use file_actions::RecycleResult;
@@ -240,12 +240,17 @@ pub async fn move_to_recycle_bin(
     };
     let paths: Vec<PathBuf> = node_by_path.keys().cloned().collect();
 
-    let recycle_result =
-        tauri::async_runtime::spawn_blocking(move || file_actions::move_to_recycle_bin(&paths))
-            .await?
-            .map_err(|error| FileActionCommandError::RecycleFailed {
-                details: describe_error_with_sources(&error),
-            })?;
+    let recycle_bin_operations = Arc::clone(&state.recycle_bin_operations);
+    let recycle_result = tauri::async_runtime::spawn_blocking(move || {
+        let _exclusive_recycle = recycle_bin_operations
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        file_actions::move_to_recycle_bin(&paths)
+    })
+    .await?
+    .map_err(|error| FileActionCommandError::RecycleFailed {
+        details: describe_error_with_sources(&error),
+    })?;
 
     let moved_nodes: Vec<NodeIndex> = recycle_result
         .moved

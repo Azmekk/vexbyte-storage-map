@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use file_actions::ThumbnailCache;
 
@@ -19,6 +20,9 @@ pub struct AppState {
     pub duplicate_searches: DuplicateSearchRegistry,
     pub thumbnail_cache: ThumbnailCache,
     pub startup_scan_request: Option<StartupScanRequest>,
+    /// Held for the whole of every Recycle Bin action, from the last check to the shell call,
+    /// so two actions can never each remove the copy the other one relies on being kept.
+    pub recycle_bin_operations: Arc<Mutex<()>>,
 }
 
 impl AppState {
@@ -40,6 +44,7 @@ impl AppState {
             duplicate_searches: DuplicateSearchRegistry::default(),
             thumbnail_cache: ThumbnailCache::new(thumbnail_directory),
             startup_scan_request,
+            recycle_bin_operations: Arc::new(Mutex::new(())),
         }
     }
 }

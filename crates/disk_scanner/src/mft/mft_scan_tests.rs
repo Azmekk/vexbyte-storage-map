@@ -7,9 +7,14 @@ use std::path::{Path, PathBuf};
 use super::attributes::file_name::FileNameNamespace::{Dos, Posix, Win32, Win32AndDos};
 use super::attributes::{DATA_TYPE, FILE_NAME_TYPE};
 use super::file_reference::FileReference;
+use super::mft_record_table::MftRecordTable;
+use super::mft_record_to_tree::build_tree_from_records;
 use super::mft_scan::{DEFAULT_MFT_CHUNK_SIZE_BYTES, scan_mft_from_volume_bytes};
 use super::mft_scan_error::MftScanError;
-use super::test_fixtures::{InMemoryVolume, RECORD_SIZE, RecordBuilder};
+use super::record_fixups::apply_update_sequence_fixups;
+use super::test_fixtures::{
+    InMemoryVolume, RECORD_SIZE, RecordBuilder, protect_with_update_sequence,
+};
 use super::volume_layout::NtfsVolumeLayout;
 use crate::cancellation::CancellationToken;
 use crate::file_tree::{FileTree, NodeFlags, NodeIndex};
@@ -370,4 +375,84 @@ fn rejects_an_inconsistent_layout() {
         result,
         Err(MftScanError::InvalidVolumeLayout { .. })
     ));
+}
+
+/// A tiny deterministic xorshift generator, so a failing corruption reproduces exactly.
+struct GarbageGenerator(u64);
+
+impl GarbageGenerator {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+
+    fn below(&mut self, bound: usize) -> usize {
+        usize::try_from(self.next() % bound as u64).unwrap()
+    }
+}
+
+/// Overwrites random bytes of a record's content (never the update sequence fields at 4..8),
+/// then protects it again, so the corrupt record passes the fixup check and reaches the
+/// attribute parsers.
+fn corrupt_record(record: &mut [u8], generator: &mut GarbageGenerator) {
+    let _ = apply_update_sequence_fixups(record);
+    let flip_count = 1 + generator.below(24);
+    for _ in 0..flip_count {
+        // Header fields (offsets, sizes, flags) are hit often on purpose.
+        let position = if generator.below(3) == 0 {
+            8 + generator.below(40)
+        } else {
+            8 + generator.below(record.len() - 8)
+        };
+        record[position] = generator.next().to_le_bytes()[0];
+    }
+    protect_with_update_sequence(record, 0x0001);
+}
+
+#[test]
+fn corrupt_records_never_panic_or_read_out_of_bounds() {
+    let mut generator = GarbageGenerator(0x9E37_79B9_7F4A_7C15);
+    let originals = sample_records();
+
+    for round in 0..3000 {
+        let mut table = MftRecordTable::with_record_count(32);
+        for (record_number, original) in &originals {
+            let mut record = original.clone();
+            corrupt_record(&mut record, &mut generator);
+            if round % 5 == 0 {
+                record.truncate(generator.below(record.len()));
+            }
+            table.add_record(*record_number as u64, &mut record);
+        }
+        table.merge_extension_records();
+
+        let tree = build_tree_from_records(&table, PathBuf::from("X:\\"), 1);
+        for index in 0..tree.node_count() {
+            let _ = tree.full_path(NodeIndex::from_usize(index));
+        }
+    }
+}
+
+#[test]
+fn a_corrupt_mft_record_zero_fails_the_scan_instead_of_panicking() {
+    let mut generator = GarbageGenerator(0x0123_4567_89AB_CDEF);
+    let (_, layout) = sample_volume();
+
+    for _ in 0..2000 {
+        let (mut volume, _) = sample_volume();
+        let (_, mut record_zero) = sample_records().swap_remove(0);
+        corrupt_record(&mut record_zero, &mut generator);
+        volume.write(record_offset(0), &record_zero);
+
+        let _ = scan_mft_from_volume_bytes(
+            &volume,
+            &layout,
+            PathBuf::from("X:\\"),
+            2048,
+            &NoProgressReporting,
+            &CancellationToken::new(),
+        );
+    }
 }

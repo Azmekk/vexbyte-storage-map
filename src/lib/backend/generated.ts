@@ -429,6 +429,11 @@ export type RecycleFailureReason =
  */
 "noRecycleBinOnDrive" | 
 /**
+ *  A name ends with a dot or a space. The shell drops those when it parses a path, so it
+ *  would act on a different item (`notes.` would become `notes`); the item is left alone.
+ */
+"nameNotSupportedByShell" | 
+/**
  *  The shell reported an error, or the user cancelled a shell prompt, and the file is still
  *  in place.
  */

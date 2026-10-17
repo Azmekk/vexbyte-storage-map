@@ -216,7 +216,10 @@ impl MftRecordTable {
             self.totals.directories += 1;
         } else {
             self.totals.files += 1;
-            self.totals.logical_bytes += summary.data_sizes.logical_size;
+            self.totals.logical_bytes = self
+                .totals
+                .logical_bytes
+                .saturating_add(summary.data_sizes.logical_size);
         }
         self.records[slot] = summary;
     }
@@ -235,7 +238,8 @@ impl MftRecordTable {
             if attribute.type_code == FILE_NAME_TYPE {
                 self.collect_file_name(&attribute, owner, record_number);
             } else if let Some(sizes) = unnamed_data_sizes(&attribute) {
-                self.totals.logical_bytes += sizes.logical_size;
+                self.totals.logical_bytes =
+                    self.totals.logical_bytes.saturating_add(sizes.logical_size);
                 self.extension_data_sizes.push(ExtensionDataSizes {
                     owner,
                     source_record: u32::try_from(record_number).unwrap_or(u32::MAX),

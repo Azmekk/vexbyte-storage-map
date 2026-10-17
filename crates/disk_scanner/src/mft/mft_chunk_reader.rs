@@ -123,7 +123,7 @@ impl<'volume, Volume: VolumeBytes> MftChunkReader<'volume, Volume> {
 
             let free_space = (self.chunk_size - chunk.len()) as u64;
             let read_length = usize::try_from(remaining_in_extent.min(free_space)).unwrap_or(0);
-            let read_offset = extent.volume_offset + self.offset_in_extent;
+            let read_offset = extent.volume_offset.saturating_add(self.offset_in_extent);
 
             let filled_length = chunk.len();
             chunk.resize(filled_length + read_length, 0);

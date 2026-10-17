@@ -308,7 +308,7 @@ impl FileTree {
 
         let category_by_extension = category_lookup_table(&self.names);
         let mut smallest_kept_first: BinaryHeap<Reverse<(u64, NodeIndex)>> =
-            BinaryHeap::with_capacity(limit + 1);
+            BinaryHeap::with_capacity(limit.min(self.nodes.len()) + 1);
 
         self.for_each_live_descendant(node, |file_index, file_node| {
             if file_node.kind != NodeKind::File {
@@ -557,6 +557,18 @@ mod tests {
             .unwrap();
         let names: Vec<_> = images.iter().map(|file| file.name.as_str()).collect();
         assert_eq!(names, ["shot.cr3", "beach.JPG", "city.png"]);
+    }
+
+    #[test]
+    fn a_huge_largest_files_limit_does_not_preallocate_it() {
+        let tree = sample_tree();
+
+        let largest = tree.largest_files(tree.root(), None, u32::MAX).unwrap();
+
+        assert_eq!(
+            largest.len(),
+            usize::try_from(tree.node(tree.root()).unwrap().file_count()).unwrap()
+        );
     }
 
     #[test]

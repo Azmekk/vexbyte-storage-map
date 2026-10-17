@@ -279,7 +279,7 @@ impl FileTreeBuilder {
             let name = self.names.add_name(UNLINKED_ITEMS_DIRECTORY_NAME);
             let mut unlinked_directory =
                 Node::new_unlinked(name, ExtensionId::NONE, NodeKind::Directory);
-            unlinked_directory.flags = NodeFlags::SYNTHETIC;
+            unlinked_directory.flags = NodeFlags::SYNTHETIC | NodeFlags::LOCATION_UNKNOWN;
             self.pending_nodes.push(unlinked_directory);
             parent_entries.push(0);
 
@@ -533,6 +533,28 @@ mod tests {
         );
         assert_eq!(tree.node(unlinked).unwrap().file_count(), 2);
         assert_eq!(tree.node(tree.root()).unwrap().logical_size(), 15);
+    }
+
+    #[test]
+    fn unlinked_items_have_no_path_so_they_cannot_be_mistaken_for_root_entries() {
+        let mut builder = FileTreeBuilder::new(PathBuf::from("root"), DirectoryKey::new(0));
+        builder.add_entry(&directory_entry("orphan-folder", 99, 1));
+        builder.add_entry(&file_entry("inside.txt", 1, 10));
+        builder.add_entry(&file_entry("linked.txt", 0, 5));
+
+        let tree = builder.finish();
+        let unlinked = find_child(&tree, tree.root(), UNLINKED_ITEMS_DIRECTORY_NAME);
+        let orphan_folder = find_child(&tree, unlinked, "orphan-folder");
+        let inside = find_child(&tree, orphan_folder, "inside.txt");
+        let linked = find_child(&tree, tree.root(), "linked.txt");
+
+        assert_eq!(tree.full_path(unlinked), None);
+        assert_eq!(tree.full_path(orphan_folder), None);
+        assert_eq!(tree.full_path(inside), None);
+        assert_eq!(
+            tree.full_path(linked),
+            Some(PathBuf::from("root").join("linked.txt"))
+        );
     }
 
     #[test]

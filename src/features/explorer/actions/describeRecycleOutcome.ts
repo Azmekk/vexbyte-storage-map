@@ -5,6 +5,7 @@ const FAILURE_REASON_TEXT: Record<RecycleFailureReason, string> = {
   notAbsolute: "its location could not be resolved",
   notFound: "it no longer exists",
   noRecycleBinOnDrive: "this drive has no Recycle Bin, so it was left untouched",
+  nameNotSupportedByShell: "its name ends with a dot or a space, so it was left untouched",
   stillInPlace: "Windows kept it in place",
 };
 
