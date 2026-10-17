@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DuplicatesScreen } from "@/features/duplicates/DuplicatesScreen";
 import { ScanScreen } from "@/features/scan/ScanScreen";
+import { GlobalSearchScreen } from "@/features/search/global/GlobalSearchScreen";
 import { HomeScreen } from "@/features/volumes/HomeScreen";
 import type { VolumesState } from "@/features/volumes/useVolumes";
 import { viewFadeVariants } from "@/lib/motion/transitions";
@@ -43,6 +44,7 @@ export function CurrentViewScreen({ volumesState, onRetryLoadingVolumes }: Curre
         )}
         {currentView.kind === "scan" && <ScanScreen scanId={currentView.scanId} />}
         {currentView.kind === "duplicates" && <DuplicatesScreen />}
+        {currentView.kind === "search" && <GlobalSearchScreen />}
       </motion.div>
     </AnimatePresence>
   );

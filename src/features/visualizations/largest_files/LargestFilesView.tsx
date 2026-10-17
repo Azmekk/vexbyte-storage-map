@@ -122,6 +122,7 @@ export function LargestFilesView({ scanId, shownFolder }: LargestFilesViewProps)
         <div
           ref={scrollElementRef}
           role="listbox"
+          data-inline-list
           aria-label="Largest files"
           className="min-h-0 flex-1 overflow-y-auto"
         >

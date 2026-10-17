@@ -16,6 +16,7 @@ import {
 import { RecentScansSidebarGroup } from "@/features/scan/RecentScansSidebarGroup";
 import { scanFolderFromPicker } from "@/features/scan/scanFolderFromPicker";
 import { useOpenVolume } from "@/features/scan/useOpenVolume";
+import { SearchSidebarItem } from "@/features/search/global/SearchSidebarItem";
 import { KeyboardShortcutsSidebarButton } from "@/features/shortcuts/KeyboardShortcutsSidebarButton";
 import type { VolumesState } from "@/features/volumes/useVolumes";
 import { VolumeSidebarItem } from "@/features/volumes/VolumeSidebarItem";
@@ -104,6 +105,7 @@ export function AppSidebar({ volumesState }: AppSidebarProps) {
                   <span>Scan folder…</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SearchSidebarItem />
               <SidebarMenuItem>
                 <SidebarMenuButton
                   tooltip="Find duplicate files"

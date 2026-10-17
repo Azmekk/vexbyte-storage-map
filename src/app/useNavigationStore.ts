@@ -5,13 +5,15 @@ import type { ScanId } from "@/lib/backend/scans";
 export type CurrentView =
   | { kind: "home" }
   | { kind: "scan"; scanId: ScanId }
-  | { kind: "duplicates" };
+  | { kind: "duplicates" }
+  | { kind: "search" };
 
 type NavigationState = {
   currentView: CurrentView;
   navigateHome: () => void;
   navigateToScan: (scanId: ScanId) => void;
   navigateToDuplicates: () => void;
+  navigateToSearch: () => void;
 };
 
 /** Which screen the app shows. Shared by every feature; keep its shape stable. */
@@ -20,4 +22,5 @@ export const useNavigationStore = create<NavigationState>((set) => ({
   navigateHome: () => set({ currentView: { kind: "home" } }),
   navigateToScan: (scanId) => set({ currentView: { kind: "scan", scanId } }),
   navigateToDuplicates: () => set({ currentView: { kind: "duplicates" } }),
+  navigateToSearch: () => set({ currentView: { kind: "search" } }),
 }));

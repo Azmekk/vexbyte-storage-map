@@ -9,6 +9,7 @@ function press(key: string, overrides: Partial<ShortcutKeyPress> = {}): Shortcut
     ctrlKey: false,
     metaKey: false,
     altKey: false,
+    shiftKey: false,
     isTyping: false,
     isOverlayOpen: false,
     isHandled: false,
@@ -38,6 +39,22 @@ describe("appShortcutAction", () => {
     expect(appShortcutAction(press("H", { ctrlKey: true, isTyping: true }))).toBe("goToYourDrives");
     expect(appShortcutAction(press("h", { ctrlKey: true, isOverlayOpen: true }))).toBeNull();
     expect(appShortcutAction(press("h"))).toBeNull();
+  });
+});
+
+describe("appShortcutAction search files", () => {
+  it("opens the Search screen with Ctrl+Shift+F or F3, even while typing", () => {
+    expect(appShortcutAction(press("F", { ctrlKey: true, shiftKey: true }))).toBe("searchFiles");
+    expect(appShortcutAction(press("f", { ctrlKey: true, shiftKey: true, isTyping: true }))).toBe(
+      "searchFiles",
+    );
+    expect(appShortcutAction(press("F3"))).toBe("searchFiles");
+  });
+
+  it("leaves Ctrl+F, Shift+F3 and keys under a dialog alone", () => {
+    expect(appShortcutAction(press("f", { ctrlKey: true }))).toBeNull();
+    expect(appShortcutAction(press("F3", { shiftKey: true }))).toBeNull();
+    expect(appShortcutAction(press("F3", { isOverlayOpen: true }))).toBeNull();
   });
 });
 

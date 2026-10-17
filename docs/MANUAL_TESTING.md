@@ -179,6 +179,46 @@ Needs a spinning USB hard disk with some photos or videos on it.
    - That file is skipped and listed as changed since the search; the others move.
 7. Restore from the Recycle Bin as in section 7 and check the copies are back in place.
 
+## 8b. Search
+
+The search index is read-only. Opening or showing a result does not change anything on disk.
+
+1. Start the app (once unelevated, once elevated) and look at **Search files** in the sidebar
+   right away.
+   - It shows "Warming up…" with a small spinner while the drives are read for the first time,
+     and nothing once every local drive is ready. Elevated, the drives use the fast MFT read.
+2. Press `Ctrl+Shift+F` (or `F3`) on any screen, including the explorer of a scan.
+   - The Search screen opens with the focus in the search box. `Ctrl+K` inside the explorer still
+     opens the search of that scan only.
+   - Before typing, the screen shows example queries and the **Search index** card: every drive
+     with its state, item count, "built … ago", method (Fast or Standard) and estimated memory,
+     plus the total memory of the index.
+3. While a drive is still warming, type `*.dll`.
+   - The "Warming up search engine" banner lists each drive still being read with a ticking file
+     count, the elapsed time and Fast or Standard. Results from the ready drives appear at once,
+     and the banner says for example "C: still warming, results will update".
+   - When the drive finishes, the results refresh by themselves and the banner goes away.
+4. Try these queries; each answers within a fraction of a second once the index is ready:
+   - `*.dll`: thousands of matches, "showing the first 10,000" when more matched.
+   - `ext:png size:>1mb`: only PNG files larger than 1 MB (check the Size column).
+   - `type:folder node_modules`: only folders, with a folder icon.
+   - `windows\system32 ext:exe`: only files whose path contains `windows\system32`.
+   - `size:big`: an inline message under the box says it is not a size; no toast appears.
+   - `dm:today`: "The dm: filter is not supported yet."
+5. Change **Sort by** to Size, Modified and Path, or click the column headers: the order changes
+   and the list jumps back to the top.
+6. Press `↓` a few times, `Page Down`, `Ctrl+End`, `Ctrl+Home`: the selection moves and stays in
+   view. `Ctrl+C` copies the selected path (a toast confirms). `Esc` clears the query.
+7. Right-click a result: **Open**, **Show in File Explorer**, **Copy path** and **Copy name**.
+   - **Show in File Explorer** opens an Explorer window with the item selected.
+   - On a harmless file (a `.txt` you created), **Open** or double-click or `Enter` opens it with
+     its default app. On a folder, it opens the folder in Explorer.
+8. In the **Search index** card, click the refresh button of the smallest drive.
+   - It switches to "Refreshing" with a ticking count, the old index keeps answering, and when it
+     is done "built just now" shows. **Refresh all** re-reads every drive.
+9. Cloud, network and removable drives appear as "Not indexed" with the reason; Google Drive for
+   desktop shows no download activity.
+
 ## 9. Polish
 
 1. Turn on **Settings → Accessibility → Visual effects → Animation effects: Off** and restart the

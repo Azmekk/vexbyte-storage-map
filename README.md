@@ -21,10 +21,21 @@ A fast, good-looking disk space explorer for Windows with a built-in duplicate f
 - Two scan methods: a parallel folder walk that works everywhere, and an MFT reader for NTFS drives (admin required) that is many times faster.
 - Treemap and sunburst visualizations rendered on canvas, with animated zoom.
 - Virtualized tree table, breadcrumbs, inspector panel and `Ctrl+K` search.
+- Search: find any file or folder on every local drive by name or path in milliseconds, in the
+  spirit of Everything (`Ctrl+Shift+F` or `F3`). The index is built in the background when the
+  app starts and kept in memory.
 - Duplicate finder for images, videos, audio, PDFs, Office documents and archives, with size grouping, partial hashing and BLAKE3 full hashing.
 - Keep rules (oldest, newest, preferred folder, shortest path) and a review screen with shell thumbnails.
 - Everything destructive goes to the Recycle Bin and is undoable. Cloud placeholder files are never downloaded.
 - Dark and light themes, reduced-motion support, keyboard shortcuts (press `?` in the app).
+
+## Search syntax
+
+The Search screen understands a subset of Everything's syntax: words that must all appear in the
+name (`annual report`), quoted phrases, wildcards (`*.iso`, `img_????.png`), path terms
+(`photos\2024`) and the filters `ext:`, `size:`, `type:`, `file:` and `folder:`, for example
+`holiday ext:jpg;png size:>2mb`. Click **Search syntax** in the app for examples, or read the full
+reference in [docs/SEARCH.md](docs/SEARCH.md).
 
 ## Safety
 

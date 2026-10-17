@@ -1,6 +1,10 @@
 import type { ShortcutKeyPress } from "./shortcutKeyPress";
 
-export type AppShortcutAction = "showShortcuts" | "goToYourDrives" | "preventPageReload";
+export type AppShortcutAction =
+  | "showShortcuts"
+  | "goToYourDrives"
+  | "searchFiles"
+  | "preventPageReload";
 export type ExplorerShortcutAction =
   | "search"
   | "goUp"
@@ -23,8 +27,8 @@ function hasNoModifier(press: ShortcutKeyPress): boolean {
 }
 
 /**
- * Shortcuts that work on every screen: `?` or Ctrl+/ open the list of shortcuts and Ctrl+H goes
- * to "Your drives". The WebView's own reload keys are swallowed, since reloading would drop every
+ * Shortcuts that work on every screen: `?` or Ctrl+/ open the list of shortcuts, Ctrl+H goes
+ * to "Your drives" and Ctrl+Shift+F or F3 open the Search screen. The WebView's own reload keys are swallowed, since reloading would drop every
  * open scan from the window.
  */
 export function appShortcutAction(press: ShortcutKeyPress): AppShortcutAction | null {
@@ -33,6 +37,12 @@ export function appShortcutAction(press: ShortcutKeyPress): AppShortcutAction | 
   }
   if (((press.ctrlKey || press.metaKey) && press.key.toLowerCase() === "r") || press.key === "F5") {
     return "preventPageReload";
+  }
+  const isSearchFilesKey =
+    (hasCommandModifier(press) && press.shiftKey && press.key.toLowerCase() === "f") ||
+    (press.key === "F3" && hasNoModifier(press) && !press.shiftKey);
+  if (isSearchFilesKey && !press.isOverlayOpen) {
+    return "searchFiles";
   }
   if (hasCommandModifier(press) && press.key === "/") {
     return "showShortcuts";

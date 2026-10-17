@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigationStore } from "@/app/useNavigationStore";
+import { useGlobalSearchStore } from "@/features/search/global/useGlobalSearchStore";
 import { appShortcutAction } from "./shortcutActions";
 import { readShortcutKeyPress } from "./shortcutKeyPress";
 import { useKeyboardShortcutsDialogStore } from "./useKeyboardShortcutsDialogStore";
@@ -20,6 +21,10 @@ export function useAppShortcuts(): void {
       }
       if (action === "goToYourDrives") {
         useNavigationStore.getState().navigateHome();
+      }
+      if (action === "searchFiles") {
+        useNavigationStore.getState().navigateToSearch();
+        useGlobalSearchStore.getState().requestInputFocus();
       }
     };
 

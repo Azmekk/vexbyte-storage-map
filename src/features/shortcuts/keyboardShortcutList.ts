@@ -16,6 +16,10 @@ export const KEYBOARD_SHORTCUT_GROUPS: readonly KeyboardShortcutGroup[] = [
     shortcuts: [
       { keyCombinations: [["?"], ["Ctrl", "/"]], description: "Show these shortcuts" },
       { keyCombinations: [["Ctrl", "H"]], description: "Go to Your drives" },
+      {
+        keyCombinations: [["Ctrl", "Shift", "F"], ["F3"]],
+        description: "Search files on every drive",
+      },
       { keyCombinations: [["Esc"]], description: "Close a dialog, a menu or the details panel" },
     ],
   },
@@ -34,6 +38,15 @@ export const KEYBOARD_SHORTCUT_GROUPS: readonly KeyboardShortcutGroup[] = [
       { keyCombinations: [["Backspace"]], description: "Go up one folder" },
       { keyCombinations: [["Alt", "Home"]], description: "Go to the top of the scan" },
       { keyCombinations: [["Ctrl", "R"], ["F5"]], description: "Scan the same place again" },
+    ],
+  },
+  {
+    title: "In search results",
+    shortcuts: [
+      { keyCombinations: [["↑"], ["↓"]], description: "Move through the results" },
+      { keyCombinations: [["Enter"]], description: "Open the selected result" },
+      { keyCombinations: [["Ctrl", "C"]], description: "Copy the path of the selected result" },
+      { keyCombinations: [["Esc"]], description: "Clear the search" },
     ],
   },
   {
