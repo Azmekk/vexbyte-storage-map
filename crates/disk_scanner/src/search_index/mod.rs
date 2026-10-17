@@ -4,8 +4,13 @@
 //! replaces the old one as a whole, which also leaves room to apply NTFS change journal updates
 //! later.
 
+#[cfg(test)]
+mod equivalence_tests;
 mod index_build;
-mod lowercase_name_table;
+#[cfg(test)]
+mod legacy_search_index;
+mod lowercase_names;
+mod search_index_node;
 mod search_query;
 mod search_results;
 mod text_pattern;

@@ -58,6 +58,12 @@ impl FileTree {
         }
     }
 
+    /// Takes the tree apart for the search index, which keeps the names and converts the nodes
+    /// into its own compact form.
+    pub(crate) fn into_nodes_names_and_root_path(self) -> (Vec<Node>, NameStorage, PathBuf) {
+        (self.nodes, self.names, self.root_path)
+    }
+
     #[must_use]
     pub fn root(&self) -> NodeIndex {
         NodeIndex::new(0)

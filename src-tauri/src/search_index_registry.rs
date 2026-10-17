@@ -776,10 +776,7 @@ mod tests {
         assert!(status.volumes[0].index.is_some());
         assert_eq!(status.overall, OverallIndexStatus::Ready);
         let old_index = registry.index_holding(Path::new(r"C:\old.txt")).unwrap();
-        assert_eq!(
-            old_index.tree().name(disk_scanner::NodeIndex::new(1)),
-            "old.txt"
-        );
+        assert_eq!(old_index.name(disk_scanner::NodeIndex::new(1)), "old.txt");
 
         registry.record_build_failure(&c_volume.mount_point, "disk busy".to_owned());
         assert!(registry.index_holding(Path::new(r"C:\old.txt")).is_some());
@@ -789,12 +786,9 @@ mod tests {
         registry.take_next_build().unwrap();
         registry.record_build_success(&c_volume.mount_point, index_with_file(r"C:\", "new.txt"));
         let new_index = registry.index_holding(Path::new(r"C:\new.txt")).unwrap();
+        assert_eq!(new_index.name(disk_scanner::NodeIndex::new(1)), "new.txt");
         assert_eq!(
-            new_index.tree().name(disk_scanner::NodeIndex::new(1)),
-            "new.txt"
-        );
-        assert_eq!(
-            old_index.tree().name(disk_scanner::NodeIndex::new(1)),
+            old_index.name(disk_scanner::NodeIndex::new(1)),
             "old.txt",
             "a search holding the old index can still finish"
         );

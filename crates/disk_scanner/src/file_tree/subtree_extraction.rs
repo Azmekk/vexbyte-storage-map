@@ -75,7 +75,7 @@ fn directory_key_for(node: NodeIndex) -> DirectoryKey {
     DirectoryKey::new(node.get())
 }
 
-fn names_are_equal_ignoring_case(first: &str, second: &str) -> bool {
+pub(crate) fn names_are_equal_ignoring_case(first: &str, second: &str) -> bool {
     if first.is_ascii() && second.is_ascii() {
         first.eq_ignore_ascii_case(second)
     } else {

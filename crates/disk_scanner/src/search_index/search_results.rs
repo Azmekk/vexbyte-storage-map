@@ -7,10 +7,12 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::lowercase_names::lowercase_name;
+use super::search_index_node::SearchNodeFlags;
 use super::search_query::{ExtensionAlternatives, ParsedQuery, TermScope};
 use super::text_pattern::TextPattern;
 use super::volume_search_index::VolumeSearchIndex;
-use crate::file_tree::{ExtensionId, NodeFlags, NodeIndex, NodeKind, is_plausible_extension};
+use crate::file_tree::{ExtensionId, NodeIndex, NodeKind, is_plausible_extension};
 
 /// Nodes are matched in chunks of this many in parallel; large enough that the per-task
 /// overhead is negligible, small enough that the work spreads evenly over all cores.
@@ -71,7 +73,7 @@ pub fn search_volume_index(
     }
 
     let plan = VolumeQueryPlan::new(index, query);
-    let node_count = index.tree.nodes.len();
+    let node_count = index.nodes.len();
     let chunk_count = node_count.div_ceil(SEARCH_CHUNK_SIZE);
     let compare = |first: &u32, second: &u32| compare_positions(index, sort, *first, *second);
 
@@ -130,7 +132,7 @@ pub fn search_volume_indexes<'index>(
 }
 
 /// Stable sorts, so each volume's own order (which breaks ties by path) survives.
-fn sort_hits_of_several_volumes(hits: &mut [SearchHit], sort: SearchSortOrder) {
+pub(super) fn sort_hits_of_several_volumes(hits: &mut [SearchHit], sort: SearchSortOrder) {
     match sort {
         SearchSortOrder::NameAscending => hits.sort_by_cached_key(|hit| hit.name.to_lowercase()),
         SearchSortOrder::SizeDescending => {
@@ -162,7 +164,8 @@ fn keep_best(positions: &mut Vec<u32>, limit: usize, compare: impl Fn(&u32, &u32
     positions.truncate(limit);
 }
 
-/// A total order: every searchable node has its own path rank, which breaks all ties.
+/// A total order: no two searchable nodes have the same place in path order, which breaks all
+/// ties.
 fn compare_positions(
     index: &VolumeSearchIndex,
     sort: SearchSortOrder,
@@ -170,15 +173,13 @@ fn compare_positions(
     second: u32,
 ) -> Ordering {
     let (first, second) = (first as usize, second as usize);
-    let by_path = || index.path_ranks[first].cmp(&index.path_ranks[second]);
-    let first_node = &index.tree.nodes[first];
-    let second_node = &index.tree.nodes[second];
+    let by_path = || index.compare_in_path_order(first, second);
+    let first_node = &index.nodes[first];
+    let second_node = &index.nodes[second];
 
     match sort {
         SearchSortOrder::NameAscending => index
-            .lowercase_names
-            .name(first)
-            .cmp(index.lowercase_names.name(second))
+            .compare_names_ignoring_case(first, second)
             .then_with(by_path),
         SearchSortOrder::SizeDescending => second_node
             .logical_size
@@ -193,19 +194,18 @@ fn compare_positions(
 }
 
 fn search_hit_for(index: &VolumeSearchIndex, position: usize) -> Option<SearchHit> {
-    let node_index = NodeIndex::from_usize(position);
-    let node = index.tree.node(node_index)?;
-    let path = index.tree.full_path(node_index)?;
+    let node = index.nodes.get(position)?;
+    let path = index.full_path(position)?;
 
     Some(SearchHit {
         volume_mount_point: index.mount_point().to_path_buf(),
         path,
-        name: index.tree.name(node_index).to_owned(),
-        is_directory: node.is_directory(),
+        name: index.name_at(position).to_owned(),
+        is_directory: node.kind() == NodeKind::Directory,
         logical_size: node.logical_size,
         modified_at_unix_milliseconds: node.modified_time.unix_milliseconds(),
-        category: index.tree.category(node_index),
-        node: node_index,
+        category: index.names.extension_category(node.extension),
+        node: NodeIndex::from_usize(position),
     })
 }
 
@@ -224,7 +224,7 @@ impl ResolvedExtensionFilter {
         for extension in &filter.lowercase_extensions {
             if is_plausible_extension(extension) {
                 // An extension no file on the volume has is simply not found.
-                extension_ids.extend(index.tree.names.interned_extension_id(extension));
+                extension_ids.extend(index.names.interned_extension_id(extension));
             } else {
                 lowercase_name_suffixes.push(format!(".{extension}").into_bytes());
             }
@@ -236,12 +236,14 @@ impl ResolvedExtensionFilter {
         }
     }
 
-    fn matches(&self, extension: ExtensionId, lowercase_name: &[u8]) -> bool {
+    fn matches_extension_id(&self, extension: ExtensionId) -> bool {
         self.extension_ids.contains(&extension)
-            || self
-                .lowercase_name_suffixes
-                .iter()
-                .any(|suffix| lowercase_name.ends_with(suffix))
+    }
+
+    fn matches_name_suffix(&self, lowercase_name: &[u8]) -> bool {
+        self.lowercase_name_suffixes
+            .iter()
+            .any(|suffix| lowercase_name.ends_with(suffix))
     }
 }
 
@@ -252,6 +254,9 @@ struct VolumeQueryPlan<'search> {
     extension_filters: Vec<ResolvedExtensionFilter>,
     name_patterns: Vec<&'search TextPattern>,
     path_patterns: Vec<&'search TextPattern>,
+    /// False when only sizes, kinds and interned extensions are compared, so names are not
+    /// even lowercased.
+    needs_lowercase_name: bool,
 }
 
 impl<'search> VolumeQueryPlan<'search> {
@@ -265,25 +270,34 @@ impl<'search> VolumeQueryPlan<'search> {
                 .collect::<Vec<_>>()
         };
 
+        let extension_filters: Vec<ResolvedExtensionFilter> = query
+            .extension_filters
+            .iter()
+            .map(|filter| ResolvedExtensionFilter::resolve(filter, index))
+            .collect();
+        let name_patterns = patterns_in(TermScope::Name);
+        let needs_lowercase_name = !name_patterns.is_empty()
+            || extension_filters
+                .iter()
+                .any(|filter| !filter.lowercase_name_suffixes.is_empty());
+
         Self {
             index,
             query,
-            extension_filters: query
-                .extension_filters
-                .iter()
-                .map(|filter| ResolvedExtensionFilter::resolve(filter, index))
-                .collect(),
-            name_patterns: patterns_in(TermScope::Name),
+            extension_filters,
+            name_patterns,
             path_patterns: patterns_in(TermScope::FullPath),
+            needs_lowercase_name,
         }
     }
 
     fn matching_positions(&self, positions: Range<usize>) -> ChunkMatches {
         let mut chunk_matches = ChunkMatches::default();
         let mut path_builder = LowercasePathBuilder::default();
+        let mut name_buffer = Vec::new();
 
         for position in positions {
-            if self.matches_without_path(position)
+            if self.matches_without_path(position, &mut name_buffer)
                 && self.matches_path_terms(position, &mut path_builder)
             {
                 chunk_matches.match_count += 1;
@@ -296,18 +310,14 @@ impl<'search> VolumeQueryPlan<'search> {
     }
 
     /// The cheap checks first: flags, kind, size, extension, then the name terms.
-    fn matches_without_path(&self, position: usize) -> bool {
-        if !self.index.is_searchable(position) {
+    fn matches_without_path(&self, position: usize, name_buffer: &mut Vec<u8>) -> bool {
+        let node = &self.index.nodes[position];
+        if !node.is_searchable() {
             return false;
         }
-        let node = &self.index.tree.nodes[position];
 
-        if !self
-            .query
-            .kind_filters
-            .iter()
-            .all(|&kind| kind == node.kind)
-        {
+        let kind = node.kind();
+        if !self.query.kind_filters.iter().all(|&wanted| wanted == kind) {
             return false;
         }
         if !self
@@ -319,16 +329,23 @@ impl<'search> VolumeQueryPlan<'search> {
             return false;
         }
 
-        let lowercase_name = self.index.lowercase_names.name(position);
-        if !self.extension_filters.is_empty() {
-            let is_file = node.kind == NodeKind::File;
-            let matches_every_filter = self
+        if !self.extension_filters.is_empty() && kind != NodeKind::File {
+            return false;
+        }
+        if !self.needs_lowercase_name {
+            return self
                 .extension_filters
                 .iter()
-                .all(|filter| filter.matches(node.extension, lowercase_name));
-            if !is_file || !matches_every_filter {
-                return false;
-            }
+                .all(|filter| filter.matches_extension_id(node.extension));
+        }
+
+        let lowercase_name = lowercase_name(self.index.name_at(position), node.flags, name_buffer);
+        let matches_every_extension_filter = self.extension_filters.iter().all(|filter| {
+            filter.matches_extension_id(node.extension)
+                || filter.matches_name_suffix(lowercase_name)
+        });
+        if !matches_every_extension_filter {
+            return false;
         }
 
         self.name_patterns
@@ -354,6 +371,7 @@ struct LowercasePathBuilder {
     cached_parent_path: Vec<u8>,
     full_path: Vec<u8>,
     ancestors: Vec<usize>,
+    name_buffer: Vec<u8>,
 }
 
 impl Default for LowercasePathBuilder {
@@ -363,15 +381,15 @@ impl Default for LowercasePathBuilder {
             cached_parent_path: Vec::new(),
             full_path: Vec::new(),
             ancestors: Vec::new(),
+            name_buffer: Vec::new(),
         }
     }
 }
 
 impl LowercasePathBuilder {
     fn lowercase_path_of(&mut self, index: &VolumeSearchIndex, position: usize) -> &[u8] {
-        let parent = index.tree.nodes[position]
-            .parent()
-            .map_or(usize::MAX, NodeIndex::as_usize);
+        let node = &index.nodes[position];
+        let parent = node.parent().map_or(usize::MAX, NodeIndex::as_usize);
         if parent != self.cached_parent {
             self.cached_parent = parent;
             self.rebuild_parent_path(index, parent);
@@ -379,11 +397,12 @@ impl LowercasePathBuilder {
 
         self.full_path.clear();
         self.full_path.extend_from_slice(&self.cached_parent_path);
-        push_path_component(&mut self.full_path, index.lowercase_names.name(position));
+        let name = lowercase_name(index.name_at(position), node.flags, &mut self.name_buffer);
+        push_path_component(&mut self.full_path, name);
         &self.full_path
     }
 
-    /// Synthetic grouping folders are not part of a path, as in `FileTree::full_path`.
+    /// Synthetic grouping folders are not part of a path, as in `VolumeSearchIndex::full_path`.
     fn rebuild_parent_path(&mut self, index: &VolumeSearchIndex, parent: usize) {
         self.cached_parent_path.clear();
         if parent == usize::MAX {
@@ -393,16 +412,17 @@ impl LowercasePathBuilder {
         self.ancestors.clear();
         let mut current = Some(NodeIndex::from_usize(parent));
         while let Some(ancestor) = current {
-            let ancestor_node = &index.tree.nodes[ancestor.as_usize()];
+            let ancestor_node = &index.nodes[ancestor.as_usize()];
             let is_root = ancestor_node.parent().is_none();
-            if is_root || !ancestor_node.flags.contains(NodeFlags::SYNTHETIC) {
+            if is_root || !ancestor_node.flags.contains(SearchNodeFlags::SYNTHETIC) {
                 self.ancestors.push(ancestor.as_usize());
             }
             current = ancestor_node.parent();
         }
 
         for &ancestor in self.ancestors.iter().rev() {
-            let name = index.lowercase_names.name(ancestor);
+            let flags = index.nodes[ancestor].flags;
+            let name = lowercase_name(index.name_at(ancestor), flags, &mut self.name_buffer);
             if self.cached_parent_path.is_empty() {
                 self.cached_parent_path.extend_from_slice(name);
             } else {

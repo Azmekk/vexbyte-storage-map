@@ -52,6 +52,5 @@ jobs:
           releaseName: "Vexbyte Storage Map ${{ github.ref_name }}"
           releaseBody: "Download the setup .exe below to install this version. Windows 10 and 11, 64-bit."
           releaseDraft: false
-          # 0.x versions are pre-releases.
           prerelease: false
           args: --bundles nsis

@@ -53,7 +53,8 @@ The syntax is a subset of Everything's.
 
 Each `SearchHit` has `volumeMountPoint`, `path`, `name`, `isDirectory`, `logicalSize`,
 `modifiedAtUnixMilliseconds`, `category` and `node`. `revealSearchHit(path)` and
-`openSearchHit(path)` accept only paths that are in a ready index. There is no Recycle Bin action
+`openSearchHit(path)` accept only paths that are in a ready index. The path is compared ignoring
+case, as NTFS does, so a path that differs from the hit's only in case is accepted too. There is no Recycle Bin action
 from search results in this version; to act on a folder, start a normal scan of it.
 
 Invalid queries reject with a `BackendCommandError` whose `commandError` is
@@ -96,9 +97,12 @@ so newly connected ones are picked up). The old index keeps answering until the 
 - The fast NTFS Master File Table read is used when the app runs as administrator; otherwise the
   folder walk. When the MFT read fails, the folder walk is tried.
 - Reading is strictly read-only, exactly like a normal scan.
-- Memory: the index holds the drive's file tree plus a lowercase copy of every name and a path
-  order table, roughly 100 to 120 bytes per file or folder. A drive with 3.5 million items needs
-  about 400 MB.
+- Memory: the index does not keep the scan's file tree. It keeps a 32-byte record per file or
+  folder (parent, extension, size, modification time, depth and a few flags) and the names, so
+  it needs roughly 50 to 60 bytes per item: a drive with 3.5 million items needs about 200 MB.
+  Names are lowercased while a query runs (most names are already lowercase or ASCII, which
+  costs next to nothing), and results are put in path order by walking up the tree, so no
+  lowercase copy of the names or path order table is stored.
 
 ## Not in this version
 

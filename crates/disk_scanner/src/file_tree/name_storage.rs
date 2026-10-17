@@ -57,6 +57,49 @@ impl NameStorage {
         id
     }
 
+    /// The same names in the order `ids` gives, with the same extension ids: name `i` of the
+    /// result is name `ids[i]` of `self`. The text is allocated at its exact size.
+    pub(crate) fn into_reordered(self, ids: impl Iterator<Item = NameId> + Clone) -> Self {
+        let text_length: usize = ids.clone().map(|id| self.name(id).len()).sum();
+        let name_count = ids.clone().count();
+        let mut name_text = String::with_capacity(text_length);
+        let mut name_offsets = Vec::with_capacity(name_count + 1);
+        name_offsets.push(0);
+        for id in ids {
+            name_text.push_str(self.name(id));
+            name_offsets.push(u32::try_from(name_text.len()).unwrap_or(u32::MAX));
+        }
+
+        Self {
+            name_text,
+            name_offsets,
+            ..self
+        }
+    }
+
+    /// The name stored at `position`, for storages whose names are in node order.
+    pub(crate) fn name_at(&self, position: usize) -> &str {
+        self.name(NameId(u32::try_from(position).unwrap_or(u32::MAX)))
+    }
+
+    /// The number of names stored.
+    #[cfg(test)]
+    pub(crate) fn name_count(&self) -> usize {
+        self.name_offsets.len() - 1
+    }
+
+    /// Approximate heap memory: the name text, its offsets and the interned extensions.
+    pub(crate) fn memory_bytes(&self) -> usize {
+        let extension_text_bytes: usize = self.extensions.iter().map(|text| text.len()).sum();
+        let per_extension_bytes = 2 * size_of::<Box<str>>()
+            + size_of::<ExtensionId>()
+            + size_of::<Option<FileCategory>>();
+        self.name_text.capacity()
+            + self.name_offsets.capacity() * size_of::<u32>()
+            + 2 * extension_text_bytes
+            + self.extensions.len() * per_extension_bytes
+    }
+
     pub(crate) fn name(&self, id: NameId) -> &str {
         let index = id.0 as usize;
         let (Some(&start), Some(&end)) = (
@@ -167,6 +210,26 @@ mod tests {
         assert_eq!(storage.name(first), "Photos");
         assert_eq!(storage.name(second), "");
         assert_eq!(storage.name(third), "Überweisung.pdf");
+    }
+
+    #[test]
+    fn reorders_names_and_keeps_extensions() {
+        let mut storage = NameStorage::with_capacity(4);
+        let first = storage.add_name("a.jpg");
+        let second = storage.add_name("Überweisung.pdf");
+        let third = storage.add_name("");
+        let jpg = storage.intern_extension_of("a.jpg");
+
+        let reordered = storage.into_reordered([third, second, first, second].into_iter());
+
+        assert_eq!(reordered.name_count(), 4);
+        assert_eq!(reordered.name_at(0), "");
+        assert_eq!(reordered.name_at(1), "Überweisung.pdf");
+        assert_eq!(reordered.name_at(2), "a.jpg");
+        assert_eq!(reordered.name_at(3), "Überweisung.pdf");
+        assert_eq!(reordered.name_at(4), "");
+        assert_eq!(reordered.interned_extension_id("jpg"), Some(jpg));
+        assert_eq!(reordered.extension(jpg), Some("jpg"));
     }
 
     #[test]

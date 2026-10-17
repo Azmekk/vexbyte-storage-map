@@ -231,13 +231,17 @@ fn search_index_meets_the_targets_on_three_million_nodes() {
     let index = time("prepare the search index", Duration::from_secs(3), || {
         VolumeSearchIndex::from_file_tree(PathBuf::from("C:\\"), tree, ScanMethod::FolderWalk)
     });
-    let node_count = index.tree().node_count();
+    let node_count = index.node_count();
     let index_bytes = index.estimated_memory_bytes();
+    let index_bytes_per_node = index_bytes as f64 / node_count as f64;
     println!(
-        "{node_count} nodes; tree {} MB, index {} MB ({:.0} bytes per node)",
+        "{node_count} nodes; tree {} MB, index {} MB ({index_bytes_per_node:.0} bytes per node)",
         tree_bytes / 1_000_000,
         index_bytes / 1_000_000,
-        index_bytes as f64 / node_count as f64
+    );
+    assert!(
+        index_bytes_per_node < 60.0,
+        "the index takes {index_bytes_per_node:.1} bytes per node, target under 60"
     );
 
     let substring_target = Duration::from_millis(50);

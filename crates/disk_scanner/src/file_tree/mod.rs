@@ -18,11 +18,13 @@ mod tree_query_error;
 mod visualization_subtree;
 
 pub use file_tree_builder::{DirectoryKey, FileTreeBuilder, NewEntry};
-pub(crate) use name_storage::{ExtensionId, is_plausible_extension};
+pub(crate) use name_storage::{ExtensionId, NameStorage, is_plausible_extension};
 pub use node::{Node, NodeFlags, NodeIndex, NodeKind};
+pub(crate) use node::{NodeTime, OptionalNodeIndex};
 pub use node_flag_summary::NodeFlagSummary;
 pub use node_removal::RemovalSummary;
 pub use node_search::SearchResult;
+pub(crate) use subtree_extraction::names_are_equal_ignoring_case;
 pub use tree_arena::{FileTree, TreeTotals};
 pub use tree_queries::{
     BreadcrumbItem, ChildSortOrder, ChildSummary, ChildrenPage, FileCategoryShare,
