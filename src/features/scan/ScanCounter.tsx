@@ -1,4 +1,4 @@
-import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { NumberTicker } from "@/components/NumberTicker";
 
 type ScanCounterProps = {
   label: string;
@@ -10,9 +10,9 @@ type ScanCounterProps = {
 export function ScanCounter({ label, value, format, isProminent = false }: ScanCounterProps) {
   return (
     <div className="grid gap-1">
-      <AnimatedNumber
+      <NumberTicker
         value={value}
-        format={format}
+        formatValue={format}
         className={
           isProminent
             ? "font-semibold text-5xl tabular-nums tracking-tight"

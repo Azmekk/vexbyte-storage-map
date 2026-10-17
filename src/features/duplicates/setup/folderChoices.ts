@@ -1,6 +1,6 @@
 import type { SuggestedFolder } from "@/lib/backend/generated";
+import { folderDisplayName } from "../paths/folderDisplayName";
 import { isSameFolder } from "../paths/isPathInsideFolder";
-import { splitFilePath } from "../paths/splitFilePath";
 
 export type FolderChoice = {
   path: string;
@@ -37,12 +37,9 @@ export function addCustomFolderChoice(
     );
   }
 
-  const folderPathWithoutTrailingSeparator = folderPath.replace(/[\\/]+$/, "");
-  const folderName = splitFilePath(folderPathWithoutTrailingSeparator).fileName || folderPath;
-
   return [
     ...folderChoices,
-    { path: folderPath, name: folderName, isCustom: true, isSelected: true },
+    { path: folderPath, name: folderDisplayName(folderPath), isCustom: true, isSelected: true },
   ];
 }
 

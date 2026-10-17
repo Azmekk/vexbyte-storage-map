@@ -18,6 +18,13 @@ export const FILE_CATEGORY_ORDER: readonly FileCategory[] = [
   "pdfs",
 ];
 
+const KNOWN_CATEGORY_NAMES: readonly string[] = FILE_CATEGORY_ORDER;
+
+/** Narrows a value reported by a select or toggle to a known category. */
+export function isFileCategory(value: string): value is FileCategory {
+  return KNOWN_CATEGORY_NAMES.includes(value);
+}
+
 /** Everything a treemap or chart rectangle can be coloured as. */
 export type ColorKey = FileCategory | "otherFiles" | "folder" | "unexpandedFolder" | "smallerItems";
 
@@ -95,10 +102,12 @@ export function categoryLabel(category: FileCategory | null): string {
 
 /** Every colour key with its label, in legend order. */
 export function legendEntries(): { colorKey: ColorKey; label: string }[] {
-  const categoryEntries = FILE_CATEGORY_ORDER.map((category) => ({
-    colorKey: category as ColorKey,
-    label: CATEGORY_LABELS[category],
-  }));
+  const categoryEntries = FILE_CATEGORY_ORDER.map(
+    (category): { colorKey: ColorKey; label: string } => ({
+      colorKey: category,
+      label: CATEGORY_LABELS[category],
+    }),
+  );
 
   return [...categoryEntries, { colorKey: "otherFiles", label: "Other files" }];
 }

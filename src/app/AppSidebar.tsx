@@ -2,6 +2,7 @@ import { CopyIcon, FolderSearchIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -15,6 +16,7 @@ import {
 import { RecentScansSidebarGroup } from "@/features/scan/RecentScansSidebarGroup";
 import { scanFolderFromPicker } from "@/features/scan/scanFolderFromPicker";
 import { useOpenVolume } from "@/features/scan/useOpenVolume";
+import { KeyboardShortcutsSidebarButton } from "@/features/shortcuts/KeyboardShortcutsSidebarButton";
 import type { VolumesState } from "@/features/volumes/useVolumes";
 import { VolumeSidebarItem } from "@/features/volumes/VolumeSidebarItem";
 import { useNavigationStore } from "./useNavigationStore";
@@ -101,6 +103,9 @@ export function AppSidebar({ volumesState }: AppSidebarProps) {
 
         <RecentScansSidebarGroup />
       </SidebarContent>
+      <SidebarFooter>
+        <KeyboardShortcutsSidebarButton />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

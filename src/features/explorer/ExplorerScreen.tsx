@@ -5,7 +5,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { startScanSession } from "@/features/scan/scanSession";
 import type { ScanRecord, ScanResult } from "@/features/scan/useScanStore";
 import { SearchPalette } from "@/features/search/SearchPalette";
-import { useSearchShortcut } from "@/features/search/useSearchShortcut";
 import { VisualizationTabs } from "@/features/visualizations/VisualizationTabs";
 import { RecycleConfirmationDialog } from "./actions/RecycleConfirmationDialog";
 import { ExplorerBreadcrumbs } from "./breadcrumbs/ExplorerBreadcrumbs";
@@ -14,6 +13,7 @@ import { InspectorPanel } from "./inspector/InspectorPanel";
 import { TreeTable } from "./tree/TreeTable";
 import { useExplorerScreen } from "./useExplorerScreen";
 import { useExplorerSelectionStore } from "./useExplorerSelectionStore";
+import { useExplorerShortcuts } from "./useExplorerShortcuts";
 
 type ExplorerScreenProps = {
   record: ScanRecord;
@@ -25,18 +25,16 @@ export function ExplorerScreen({ record, result }: ExplorerScreenProps) {
   const scanId = record.scanId;
   const explorer = useExplorerScreen(scanId, result);
   const isInspectorOpen = useExplorerSelectionStore((state) => state.isInspectorOpen);
-  useSearchShortcut();
+  const rescan = () => void startScanSession(record.target, record.method);
+  useExplorerShortcuts({
+    shownFolder: explorer.shownFolder,
+    parentOfShownFolder: explorer.parentOfShownFolder,
+    onRescan: rescan,
+  });
 
   return (
     <>
-      <TopBar
-        actions={
-          <ExplorerTopBarActions
-            method={record.method}
-            onRescan={() => void startScanSession(record.target, record.method)}
-          />
-        }
-      >
+      <TopBar actions={<ExplorerTopBarActions method={record.method} onRescan={rescan} />}>
         {explorer.crumbs.length > 0 ? (
           <ExplorerBreadcrumbs crumbs={explorer.crumbs} onOpenFolder={explorer.openFolder} />
         ) : (

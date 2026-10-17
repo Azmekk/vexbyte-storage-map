@@ -1,4 +1,3 @@
-import { useReducedMotion } from "motion/react";
 import {
   type PointerEvent,
   type RefObject,
@@ -12,6 +11,7 @@ import {
 import type { TreemapColorMode } from "@/features/explorer/useExplorerSelectionStore";
 import type { NodeIndex, VisualizationNode } from "@/lib/backend/tree";
 import { VISUALIZATION_ZOOM_DURATION_MILLISECONDS } from "@/lib/motion/transitions";
+import { usePrefersReducedMotion } from "@/lib/motion/usePrefersReducedMotion";
 import type { PaletteTheme } from "../categoryPalette";
 import { prepareHighDensityCanvas } from "../prepareHighDensityCanvas";
 import { useElementSize } from "../useElementSize";
@@ -61,7 +61,7 @@ export function useTreemapCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const size = useElementSize(containerRef);
-  const prefersReducedMotion = useReducedMotion() === true;
+  const prefersReducedMotion = usePrefersReducedMotion();
   const animation = useFrameAnimation();
   const [hover, setHover] = useState<TreemapHover | null>(null);
 

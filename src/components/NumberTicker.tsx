@@ -8,7 +8,7 @@ type NumberTickerProps = {
   className?: string;
 };
 
-/** A number that ticks smoothly to each new value. */
+/** A number that ticks smoothly to each new value; instant with reduced motion. */
 export function NumberTicker({ value, formatValue, className }: NumberTickerProps) {
   const animatedValue = useAnimatedNumber(value);
   const formattedValue = useTransform(animatedValue, formatValue);

@@ -11,6 +11,7 @@
 
 mod cancellation;
 mod candidate_collector;
+mod confirmed_group_counter;
 mod directory_entry;
 mod drive_kind;
 mod duplicate_group;

@@ -161,6 +161,20 @@ describe("prepareSunburstLayout", () => {
     expect(angleOfPoint(1, 0)).toBeCloseTo(Math.PI / 2);
   });
 
+  it("gives folders the category that takes most of their bytes", () => {
+    const photosFolder = createNode(10, 900, [
+      createNode(11, 500, [], { category: "images" }),
+      createNode(12, 300, [], { category: "videos" }),
+      createNode(13, 100),
+    ]);
+    const otherFolder = createNode(20, 100, [createNode(21, 100)]);
+    const arcs = prepareSunburstLayout(createNode(0, 1000, [photosFolder, otherFolder]));
+
+    expect(arcs.find((arc) => arc.node === 10)?.dominantCategory).toBe("images");
+    expect(arcs.find((arc) => arc.node === 20)?.dominantCategory).toBeNull();
+    expect(arcs.find((arc) => arc.node === 11)?.dominantCategory).toBeNull();
+  });
+
   it("starts zoom-in angles inside the clicked segment", () => {
     const viewport = angularViewportForZoomIn(1, 2);
     expect(projectAngle(0, viewport)).toBeCloseTo(1);

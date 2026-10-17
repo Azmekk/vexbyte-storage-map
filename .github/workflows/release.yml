@@ -33,16 +33,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The same frontend checks as CI, so a tag never ships code that fails them.
+      - run: pnpm check
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      # Builds the NSIS installer and attaches it to a GitHub release named after the tag.
+      # Builds are unsigned by default. Authenticode signing of the installer is configured with
+      # bundle.windows.certificateThumbprint or bundle.windows.signCommand in tauri.conf.json.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional code signing. Leave unset for unsigned builds.
+          # Optional updater signing key; unset secrets are empty and the build stays unsigned.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Vexbyte Storage Map ${{ github.ref_name }}"
-          releaseBody: "See the assets below to download and install this version."
+          releaseBody: "Download the setup .exe below to install this version. Windows 10 and 11, 64-bit."
           releaseDraft: false
-          prerelease: false
+          # 0.x versions are pre-releases.
+          prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
           args: --bundles nsis

@@ -101,8 +101,9 @@ export function useDuplicateResults(searchId: DuplicateSearchId): UseDuplicateRe
 
   const chooseKeepRule = useCallback(
     (kind: KeepRuleKind) => {
-      const currentFolder = preferredFolderOf(useDuplicateSearchStore.getState().keepRule);
-      const rule = keepRuleFromKind(kind, currentFolder);
+      const state = useDuplicateSearchStore.getState();
+      const knownFolder = preferredFolderOf(state.keepRule) ?? state.lastPreferredFolder;
+      const rule = keepRuleFromKind(kind, knownFolder);
       if (rule === null) {
         void pickPreferredFolderThenApply();
         return;

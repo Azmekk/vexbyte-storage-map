@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { BreadcrumbItem, ChildrenPage, ChildSummary } from "@/lib/backend/tree";
 import type { QueryState } from "@/lib/queryCache/scanQueryCache";
 import { buildBreadcrumbTrail } from "./breadcrumbs/buildBreadcrumbTrail";
+import { describeEmptyFolder } from "./tree/describeEmptyFolder";
 import { flattenTreeRows } from "./tree/flattenTreeRows";
 import { columnSortState, nextSortOrderForColumn } from "./tree/treeColumns";
 import { treeKeyboardAction } from "./tree/treeKeyboardNavigation";
@@ -154,6 +155,22 @@ describe("treeKeyboardAction", () => {
     expect(treeKeyboardAction(rows, 2, "Backspace")).toEqual({ kind: "goUp" });
     expect(treeKeyboardAction([], -1, "Backspace")).toEqual({ kind: "goUp" });
   });
+
+  it("asks to recycle the focused item with Delete, never a synthetic one", () => {
+    expect(treeKeyboardAction(rows, 2, "Delete")).toEqual({
+      kind: "requestRecycle",
+      target: { node: 3, name: "item 3", kind: "file", isSynthetic: false },
+    });
+    expect(treeKeyboardAction(rows, -1, "Delete")).toEqual({ kind: "none" });
+
+    const synthetic = createChild(9, { flags: { ...createChild(9).flags, synthetic: true } });
+    const syntheticRows = flattenTreeRows({
+      rootFolder: 1,
+      expandedFolders: new Set(),
+      readChildren: () => loadedPage(1, [synthetic]),
+    }).rows;
+    expect(treeKeyboardAction(syntheticRows, 0, "Delete")).toEqual({ kind: "none" });
+  });
 });
 
 describe("tree column sorting", () => {
@@ -202,5 +219,20 @@ describe("buildBreadcrumbTrail", () => {
     expect(buildBreadcrumbTrail(crumbs.slice(0, 1), 3)).toEqual([
       { kind: "crumb", crumb: crumbs[0], isCurrent: true },
     ]);
+  });
+});
+
+describe("describeEmptyFolder", () => {
+  const flags = createChild(1).flags;
+
+  it("explains protected folders instead of calling them empty", () => {
+    const description = describeEmptyFolder({ ...flags, inaccessible: true });
+    expect(description.isWarning).toBe(true);
+    expect(description.title).not.toMatch(/empty/i);
+  });
+
+  it("calls a plain folder empty, also before its flags are known", () => {
+    expect(describeEmptyFolder(flags).title).toBe("This folder is empty");
+    expect(describeEmptyFolder(null).title).toBe("This folder is empty");
   });
 });

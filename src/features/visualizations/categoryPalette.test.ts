@@ -7,6 +7,7 @@ import {
   legendEntries,
   paletteColor,
 } from "./categoryPalette";
+import { mixHexColors } from "./mixHexColors";
 import { readableTextColorOn, relativeLuminance } from "./readableTextColor";
 
 describe("category palette", () => {
@@ -38,6 +39,14 @@ describe("category palette", () => {
     expect(categoryLabel("archivesAndInstallers")).toBe("Archives & installers");
     expect(categoryLabel(null)).toBe("Other files");
     expect(legendEntries()).toHaveLength(FILE_CATEGORY_ORDER.length + 1);
+  });
+});
+
+describe("mixHexColors", () => {
+  it("blends between two colours", () => {
+    expect(mixHexColors("#000000", "#ffffff", 0)).toBe("#000000");
+    expect(mixHexColors("#000000", "#ffffff", 1)).toBe("#ffffff");
+    expect(mixHexColors("#000000", "#ff8000", 0.5)).toBe("#804000");
   });
 });
 

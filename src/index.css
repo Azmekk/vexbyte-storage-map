@@ -136,3 +136,28 @@
 .dark {
   --volume-used: oklch(0.62 0.19 274);
 }
+
+/*
+ * Reduced motion: CSS transitions and the enter/exit animations of dialogs, menus and toasts
+ * become instant. Motion components follow `MotionConfig reducedMotion="user"` and the canvas
+ * zooms and number tickers check the same setting. Spinners keep turning: they carry meaning.
+ */
+/* biome-ignore-start lint/complexity/noImportantStyles: reduced motion must win over every component's own timing. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  *:not(.animate-spin),
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+/* biome-ignore-end lint/complexity/noImportantStyles: see above. */

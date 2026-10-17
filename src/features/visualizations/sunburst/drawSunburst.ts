@@ -65,6 +65,7 @@ export function drawSunburst(context: CanvasRenderingContext2D, options: Sunburs
         category: arc.category,
         depth: arc.ring,
         hasVisibleChildren: arc.hasChildren,
+        dominantCategory: arc.dominantCategory,
       },
       colorMode,
       theme,

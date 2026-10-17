@@ -1,4 +1,5 @@
 import type { NodeIndex } from "@/lib/backend/tree";
+import { type NodeActionTarget, nodeActionTarget } from "../actions/nodeActionTarget";
 import type { TreeRow } from "./flattenTreeRows";
 
 /** What a key press in the tree table asks for. */
@@ -9,6 +10,7 @@ export type TreeKeyboardAction =
   | { kind: "openFolder"; folder: NodeIndex }
   | { kind: "goUp" }
   | { kind: "showMore"; folder: NodeIndex }
+  | { kind: "requestRecycle"; target: NodeActionTarget }
   | { kind: "none" };
 
 const PAGE_STEP = 10;
@@ -49,7 +51,8 @@ function parentRowIndex(rows: TreeRow[], rowIndex: number): number {
 /**
  * Maps a key to a tree action, following the usual tree-view conventions: up and down move,
  * right expands (then steps into the first child), left collapses (then steps to the parent),
- * Enter opens a folder and Backspace goes to the parent folder.
+ * Enter opens a folder and Backspace goes to the parent folder. Delete only asks to move the
+ * item to the Recycle Bin; the confirmation dialog always comes first.
  */
 export function treeKeyboardAction(
   rows: TreeRow[],
@@ -94,6 +97,10 @@ export function treeKeyboardAction(
       return { kind: "focusRow", rowIndex: clampedFocusTarget(rows, rows.length - 1, -1) };
     case "Backspace":
       return { kind: "goUp" };
+    case "Delete":
+      return focusedRow?.kind === "item" && !focusedRow.item.flags.synthetic
+        ? { kind: "requestRecycle", target: nodeActionTarget(focusedRow.item) }
+        : { kind: "none" };
     case "ArrowRight": {
       if (focusedRow?.kind !== "item" || !focusedRow.item.hasChildren) {
         return { kind: "none" };

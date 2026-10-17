@@ -5,6 +5,7 @@ import type {
   VisualizationNode,
   VisualizationNodeKind,
 } from "@/lib/backend/tree";
+import { dominantFileCategories } from "../dominantFileCategories";
 import { createVisualizationHierarchy, visualizationItemId } from "../visualizationHierarchy";
 
 /** One ring segment. Angles in radians from 12 o'clock, clockwise; rings counted from 1. */
@@ -20,6 +21,8 @@ export type SunburstArc = {
   startAngle: number;
   endAngle: number;
   hasChildren: boolean;
+  /** For folders: the known category taking most of the bytes listed inside, if any. */
+  dominantCategory: FileCategory | null;
 };
 
 export const SUNBURST_RING_COUNT = 5;
@@ -40,6 +43,7 @@ export function prepareSunburstLayout(
     createVisualizationHierarchy(root),
   );
 
+  const dominantCategories = dominantFileCategories(layoutRoot);
   const arcs: SunburstArc[] = [];
 
   const visit = (node: HierarchyRectangularNode<VisualizationNode>) => {
@@ -65,6 +69,7 @@ export function prepareSunburstLayout(
         startAngle: node.x0,
         endAngle: node.x1,
         hasChildren: children.length > 0,
+        dominantCategory: dominantCategories.get(node) ?? null,
       });
     }
 

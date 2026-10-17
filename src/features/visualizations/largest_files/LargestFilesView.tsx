@@ -12,16 +12,18 @@ import {
 } from "@/components/ui/select";
 import { useNodeActions } from "@/features/explorer/actions/useNodeActions";
 import { revealNodeInExplorer } from "@/features/explorer/revealNodeInExplorer";
-import {
-  type LargestFilesCategoryFilter,
-  useExplorerSelectionStore,
-} from "@/features/explorer/useExplorerSelectionStore";
+import { useExplorerSelectionStore } from "@/features/explorer/useExplorerSelectionStore";
 import { useLargestFiles } from "@/features/explorer/useTreeQueries";
 import type { ScanId } from "@/lib/backend/scans";
 import type { NodeIndex } from "@/lib/backend/tree";
 import { formatCount } from "@/lib/formatting/formatCount";
 import { useLastSuccessfulData } from "@/lib/queryCache/useLastSuccessfulData";
-import { categoryColor, categoryLabel, FILE_CATEGORY_ORDER } from "../categoryPalette";
+import {
+  categoryColor,
+  categoryLabel,
+  FILE_CATEGORY_ORDER,
+  isFileCategory,
+} from "../categoryPalette";
 import { usePaletteTheme } from "../usePaletteTheme";
 import { VisualizationState } from "../VisualizationState";
 import { LargestFileRow } from "./LargestFileRow";
@@ -67,7 +69,9 @@ export function LargestFilesView({ scanId, shownFolder }: LargestFilesViewProps)
       <div className="flex items-center gap-3 px-3 pb-2">
         <Select
           value={categoryFilter}
-          onValueChange={(value) => setCategoryFilter(value as LargestFilesCategoryFilter)}
+          onValueChange={(value) =>
+            (value === "all" || isFileCategory(value)) && setCategoryFilter(value)
+          }
         >
           <SelectTrigger size="sm" className="w-52" aria-label="Kind of file">
             <SelectValue />

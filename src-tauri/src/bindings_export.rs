@@ -1,5 +1,7 @@
+#[cfg(any(test, debug_assertions))]
 use std::path::Path;
 
+#[cfg(any(test, debug_assertions))]
 use specta_typescript::Typescript;
 use tauri::Wry;
 use tauri_specta::{Builder, collect_commands, collect_events};
@@ -11,7 +13,9 @@ use crate::commands::{
 use crate::events::{DuplicateSearchFinished, ScanFinished};
 
 /// Where the generated bindings live in the frontend. Built from the manifest directory so the
-/// export works no matter which directory the app or the test runs from.
+/// export works no matter which directory the app or the test runs from. Release builds never
+/// export bindings, so the export code is left out of them.
+#[cfg(any(test, debug_assertions))]
 const TYPESCRIPT_BINDINGS_PATH: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../src/lib/backend/generated.ts"
@@ -60,12 +64,14 @@ pub fn create_bindings_builder() -> Builder<Wry> {
 }
 
 /// Writes the TypeScript bindings to `src/lib/backend/generated.ts`.
+#[cfg(any(test, debug_assertions))]
 pub fn export_typescript_bindings(
     bindings_builder: &Builder<Wry>,
 ) -> Result<(), specta_typescript::Error> {
     export_typescript_bindings_to(bindings_builder, Path::new(TYPESCRIPT_BINDINGS_PATH))
 }
 
+#[cfg(any(test, debug_assertions))]
 fn export_typescript_bindings_to(
     bindings_builder: &Builder<Wry>,
     destination: &Path,

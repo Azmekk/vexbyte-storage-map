@@ -1,17 +1,7 @@
+import { parseHexColor } from "./parseHexColor";
+
 const DARK_INK = "#0b0b0b";
 const LIGHT_INK = "#ffffff";
-
-function parseHexColor(hexColor: string): [number, number, number] | null {
-  const match = /^#?([0-9a-f]{6})$/i.exec(hexColor.trim());
-  const hexDigits = match?.[1];
-
-  if (hexDigits === undefined) {
-    return null;
-  }
-
-  const value = Number.parseInt(hexDigits, 16);
-  return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
-}
 
 function linearChannel(channel: number): number {
   const normalized = channel / 255;

@@ -1,8 +1,8 @@
 import { CheckIcon } from "lucide-react";
 import { motion } from "motion/react";
+import { NumberTicker } from "@/components/NumberTicker";
 import { enterTransition } from "@/lib/motion/transitions";
 import { formatCount } from "../formatting/formatCount";
-import { NumberTicker } from "../shared/NumberTicker";
 import type { SearchStageDescription } from "./describeSearchStages";
 
 type SearchStageRowProps = {

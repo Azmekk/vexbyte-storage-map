@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
-  type TreemapColorMode,
+  isTreemapColorMode,
+  isVisualizationTab,
   useExplorerSelectionStore,
-  type VisualizationTab,
 } from "@/features/explorer/useExplorerSelectionStore";
 import type { ScanId } from "@/lib/backend/scans";
 import type { NodeIndex } from "@/lib/backend/tree";
@@ -41,7 +41,7 @@ export function VisualizationTabs({
   return (
     <Tabs
       value={visualizationTab}
-      onValueChange={(value) => setVisualizationTab(value as VisualizationTab)}
+      onValueChange={(value) => isVisualizationTab(value) && setVisualizationTab(value)}
       className="flex h-full min-h-0 flex-col gap-0 bg-background"
     >
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5">
@@ -72,7 +72,7 @@ export function VisualizationTabs({
               size="sm"
               variant="outline"
               value={colorMode}
-              onValueChange={(value) => value !== "" && setColorMode(value as TreemapColorMode)}
+              onValueChange={(value) => isTreemapColorMode(value) && setColorMode(value)}
               aria-label="Colour blocks by"
             >
               <ToggleGroupItem value="category">By type</ToggleGroupItem>

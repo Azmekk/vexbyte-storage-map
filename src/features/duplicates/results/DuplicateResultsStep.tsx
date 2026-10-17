@@ -1,4 +1,4 @@
-import { RotateCwIcon, SlidersHorizontalIcon, TriangleAlertIcon } from "lucide-react";
+import { RotateCwIcon, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { DuplicateSearchId, DuplicateSearchSummary } from "@/lib/backend/generated";
@@ -43,18 +43,9 @@ export function DuplicateResultsStep({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-b">
         <div className="mx-auto grid w-full max-w-6xl gap-5 px-6 pt-6 pb-4">
-          <header className="flex flex-wrap items-start justify-between gap-4">
-            <div className="grid gap-1">
-              <h1 className="font-semibold text-2xl tracking-tight">Duplicates</h1>
-              <p className="text-muted-foreground text-sm">
-                {describeSearchHeadline(summary)} {caveats.join(" ")}
-              </p>
-            </div>
-            <Button variant="outline" onClick={onReturnToSetup}>
-              <SlidersHorizontalIcon />
-              New search
-            </Button>
-          </header>
+          <p className="text-muted-foreground text-sm">
+            {describeSearchHeadline(summary)} {caveats.join(" ")}
+          </p>
 
           {!hasNoGroups && (
             <SummaryCards

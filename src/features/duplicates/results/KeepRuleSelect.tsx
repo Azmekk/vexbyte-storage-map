@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { KeepRule } from "@/lib/backend/generated";
-import { splitFilePath } from "../paths/splitFilePath";
+import { folderDisplayName } from "../paths/folderDisplayName";
 import {
   isKeepRuleKind,
   KEEP_RULE_OPTIONS,
@@ -66,22 +66,25 @@ export function KeepRuleSelect({
         </SelectContent>
       </Select>
       {preferredFolder !== null && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              onClick={onChoosePreferredFolder}
-              disabled={isApplying}
-              className="max-w-56"
-            >
-              <FolderIcon />
-              <span className="truncate">
-                {splitFilePath(preferredFolder.replace(/[\\/]+$/, "")).fileName || preferredFolder}
-              </span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{preferredFolder} (click to change)</TooltipContent>
-        </Tooltip>
+        <div className="flex h-9 max-w-72 items-center gap-1 rounded-md border bg-card pr-1 pl-2.5 text-sm">
+          <FolderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="min-w-0 truncate">{folderDisplayName(preferredFolder)}</span>
+            </TooltipTrigger>
+            <TooltipContent>{preferredFolder}</TooltipContent>
+          </Tooltip>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-muted-foreground"
+            onClick={onChoosePreferredFolder}
+            disabled={isApplying}
+            aria-label={`Change the folder whose copies to keep (now ${preferredFolder})`}
+          >
+            Change
+          </Button>
+        </div>
       )}
       {isApplying && (
         <LoaderCircleIcon

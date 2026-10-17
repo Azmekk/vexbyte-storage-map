@@ -36,6 +36,8 @@ type DuplicateSearchState = {
   /** Shown inline on the setup step, for example when a system folder was chosen. */
   setupErrorMessage: string | null;
   keepRule: KeepRule;
+  /** The folder last used by a "keep the one in a folder" rule, reused when it is chosen again. */
+  lastPreferredFolder: string | null;
   sortOrder: DuplicateGroupSortOrder;
 
   setRun: (run: DuplicateSearchRun) => void;
@@ -58,6 +60,7 @@ export const useDuplicateSearchStore = create<DuplicateSearchState>((set) => ({
   minimumFileSizeBytes: DEFAULT_MINIMUM_FILE_SIZE_BYTES,
   setupErrorMessage: null,
   keepRule: DEFAULT_KEEP_RULE,
+  lastPreferredFolder: null,
   sortOrder: DEFAULT_SORT_ORDER,
 
   setRun: (run) => set({ run }),
@@ -67,7 +70,12 @@ export const useDuplicateSearchStore = create<DuplicateSearchState>((set) => ({
     set({ selectedCategories, setupErrorMessage: null }),
   setMinimumFileSizeBytes: (minimumFileSizeBytes) => set({ minimumFileSizeBytes }),
   setSetupErrorMessage: (setupErrorMessage) => set({ setupErrorMessage }),
-  setKeepRule: (keepRule) => set({ keepRule }),
+  setKeepRule: (keepRule) =>
+    set((state) => ({
+      keepRule,
+      lastPreferredFolder:
+        keepRule.kind === "preferredFolder" ? keepRule.folder : state.lastPreferredFolder,
+    })),
   setSortOrder: (sortOrder) => set({ sortOrder }),
   resetResultPreferences: () => set({ keepRule: DEFAULT_KEEP_RULE, sortOrder: DEFAULT_SORT_ORDER }),
 }));

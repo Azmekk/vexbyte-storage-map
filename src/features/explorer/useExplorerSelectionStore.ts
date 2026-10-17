@@ -8,6 +8,19 @@ export type TreemapColorMode = "category" | "depth";
 /** `"all"` shows every category in the largest files list. */
 export type LargestFilesCategoryFilter = FileCategory | "all";
 
+const VISUALIZATION_TABS: readonly string[] = ["treemap", "sunburst", "fileTypes", "largestFiles"];
+const TREEMAP_COLOR_MODES: readonly string[] = ["category", "depth"];
+
+/** Narrows a value reported by the tabs component. */
+export function isVisualizationTab(value: string): value is VisualizationTab {
+  return VISUALIZATION_TABS.includes(value);
+}
+
+/** Narrows a value reported by the colour mode toggle. */
+export function isTreemapColorMode(value: string): value is TreemapColorMode {
+  return TREEMAP_COLOR_MODES.includes(value);
+}
+
 export const DEFAULT_CHILD_PAGE_LIMIT = 300;
 const CHILD_PAGE_LIMIT_STEP = 1000;
 

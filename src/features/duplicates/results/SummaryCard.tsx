@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
+import { NumberTicker } from "@/components/NumberTicker";
 import { cn } from "@/lib/classNames";
-import { NumberTicker } from "../shared/NumberTicker";
 
 type SummaryCardProps = {
   label: string;

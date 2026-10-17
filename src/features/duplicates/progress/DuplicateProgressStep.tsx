@@ -1,5 +1,6 @@
 import { CloudOffIcon, LoaderCircleIcon, XIcon } from "lucide-react";
 import { motion } from "motion/react";
+import { NumberTicker } from "@/components/NumberTicker";
 import { Button } from "@/components/ui/button";
 import type { DuplicateSearchProgress } from "@/lib/backend/generated";
 import { formatBytesAsReadableSize } from "@/lib/formatting/formatBytesAsReadableSize";
@@ -7,7 +8,6 @@ import { fadeSlideInVariants } from "@/lib/motion/transitions";
 import { formatCount } from "../formatting/formatCount";
 import { pluralize } from "../formatting/pluralize";
 import type { DuplicateSearchRun } from "../search/useDuplicateSearchStore";
-import { NumberTicker } from "../shared/NumberTicker";
 import { describeCurrentActivity, describeSearchStages } from "./describeSearchStages";
 import { SearchEndedState } from "./SearchEndedState";
 import { SearchStageFunnel } from "./SearchStageFunnel";

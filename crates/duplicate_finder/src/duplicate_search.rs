@@ -8,6 +8,7 @@ use specta::Type;
 
 use crate::cancellation::{CancellationToken, SearchCancelled};
 use crate::candidate_collector::{Candidate, collect_candidates};
+use crate::confirmed_group_counter::ConfirmedGroupCounter;
 use crate::drive_kind::{DriveKind, DriveKindCache, ReadStrategy};
 use crate::duplicate_group::{DuplicateFile, DuplicateGroup, DuplicateGroupId};
 use crate::file_read_error::FileReadError;
@@ -137,9 +138,9 @@ pub fn find_duplicates_with_validated_settings(
         elapsed_milliseconds: u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX),
     };
 
-    reporter.enter_stage(DuplicateSearchStage::Done, |progress| {
-        progress.duplicate_groups_found = result.groups.len() as u64;
-    });
+    // The group count is not overwritten here: it was counted live as groups got confirmed, and
+    // the tests check that it ends equal to the number of groups found.
+    reporter.enter_stage(DuplicateSearchStage::Done, |_| {});
     Ok(result)
 }
 
@@ -187,12 +188,25 @@ impl ComparisonPipeline<'_, '_> {
 
         let reporter = self.reporter;
         let cancellation = self.cancellation;
+        let groups_confirmed_by_quick_check = ConfirmedGroupCounter::new();
         let hashed_files = self.read_with_drive_strategy(files_to_check, |candidate| {
             if cancellation.is_cancelled() {
                 return (candidate, Err(FileReadError::Cancelled));
             }
             let partial_hash = compute_partial_hash(&candidate.path, candidate.size);
-            reporter.update(|progress| progress.quick_check_files_done += 1);
+            let confirms_new_group = match &partial_hash {
+                Ok(hash) if quick_check_covers_whole_file(candidate.size) => {
+                    groups_confirmed_by_quick_check
+                        .record_file_and_check_new_group((candidate.size, *hash))
+                }
+                _ => false,
+            };
+            reporter.update(|progress| {
+                progress.quick_check_files_done += 1;
+                if confirms_new_group {
+                    progress.duplicate_groups_found += 1;
+                }
+            });
             (candidate, partial_hash)
         });
 
@@ -215,12 +229,22 @@ impl ComparisonPipeline<'_, '_> {
 
         let reporter = self.reporter;
         let cancellation = self.cancellation;
+        let groups_confirmed_by_full_check = ConfirmedGroupCounter::new();
         let hashed_files = self.read_with_drive_strategy(files_to_check, |candidate| {
             let content_hash =
                 compute_full_hash(&candidate.path, candidate.size, cancellation, |bytes| {
                     reporter.update(|progress| progress.full_check_bytes_done += bytes);
                 });
-            reporter.update(|progress| progress.full_check_files_done += 1);
+            let confirms_new_group = content_hash.as_ref().is_ok_and(|hash| {
+                groups_confirmed_by_full_check
+                    .record_file_and_check_new_group((candidate.size, *hash))
+            });
+            reporter.update(|progress| {
+                progress.full_check_files_done += 1;
+                if confirms_new_group {
+                    progress.duplicate_groups_found += 1;
+                }
+            });
             (candidate, content_hash)
         });
 

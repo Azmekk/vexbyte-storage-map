@@ -2,8 +2,11 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useSyncExternalSto
 import type { ScanId } from "@/lib/backend/scans";
 import { type ChildrenPage, getChildren, type NodeIndex } from "@/lib/backend/tree";
 import { scanQueryCache } from "@/lib/queryCache/scanQueryCache";
+import { useRecycleConfirmationStore } from "../actions/useRecycleConfirmationStore";
 import { treeQueryKeys } from "../treeQueryKeys";
 import { DEFAULT_CHILD_PAGE_LIMIT, useExplorerSelectionStore } from "../useExplorerSelectionStore";
+import { useNodeDetails } from "../useTreeQueries";
+import { describeEmptyFolder, type EmptyFolderDescription } from "./describeEmptyFolder";
 import { flattenTreeRows, type TreeRow } from "./flattenTreeRows";
 import { treeKeyboardAction } from "./treeKeyboardNavigation";
 
@@ -16,6 +19,10 @@ export type TreeTableModel = {
   focusedRowIndex: number;
   selectedNode: NodeIndex | null;
   lastExpandedFolder: NodeIndex | null;
+  /** Set when the shown folder has nothing to list, with the reason. */
+  emptyFolder: EmptyFolderDescription | null;
+  /** Opens the parent of the shown folder; `null` at the scanned root. */
+  goUp: (() => void) | null;
   handleKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
   selectRow: (rowIndex: number) => void;
   toggleFolder: (folder: NodeIndex) => void;
@@ -46,6 +53,7 @@ export function useTreeTable(
   const clearLastExpandedFolder = useExplorerSelectionStore(
     (state) => state.clearLastExpandedFolder,
   );
+  const requestRecycle = useRecycleConfirmationStore((state) => state.requestRecycle);
 
   const cacheVersion = useSyncExternalStore(scanQueryCache.subscribe, scanQueryCache.getVersion);
 
@@ -70,6 +78,13 @@ export function useTreeTable(
   }, [cacheVersion, shownFolder, expandedFolders, childrenKey]);
 
   const { rows, foldersToLoad } = flattenedTree;
+  const isEmptyFolder = rows.length === 0 || (rows.length === 1 && rows[0]?.kind === "emptyFolder");
+  const shownFolderDetails = useNodeDetails(scanId, isEmptyFolder ? shownFolder : null).state;
+  const emptyFolder = isEmptyFolder
+    ? describeEmptyFolder(
+        shownFolderDetails.status === "success" ? shownFolderDetails.data.flags : null,
+      )
+    : null;
 
   useEffect(() => {
     for (const folder of foldersToLoad) {
@@ -131,6 +146,9 @@ export function useTreeTable(
         case "showMore":
           showMoreChildren(action.folder);
           break;
+        case "requestRecycle":
+          requestRecycle(scanId, [action.target.node]);
+          break;
         case "goUp":
           if (parentOfShownFolder === null) {
             return;
@@ -151,8 +169,20 @@ export function useTreeTable(
       parentOfShownFolder,
       selectNode,
       shownFolder,
+      requestRecycle,
+      scanId,
     ],
   );
+
+  const goUp = useMemo(() => {
+    if (parentOfShownFolder === null) {
+      return null;
+    }
+    return () => {
+      openFolder(parentOfShownFolder);
+      selectNode(shownFolder);
+    };
+  }, [parentOfShownFolder, openFolder, selectNode, shownFolder]);
 
   const retryFolder = useCallback(
     (folder: NodeIndex) => scanQueryCache.retry(childrenKey(folder)),
@@ -164,6 +194,8 @@ export function useTreeTable(
     focusedRowIndex,
     selectedNode,
     lastExpandedFolder,
+    emptyFolder,
+    goUp,
     handleKeyDown,
     selectRow,
     toggleFolder: toggleFolderExpanded,

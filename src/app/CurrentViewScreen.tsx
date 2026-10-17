@@ -42,16 +42,7 @@ export function CurrentViewScreen({ volumesState, onRetryLoadingVolumes }: Curre
           </>
         )}
         {currentView.kind === "scan" && <ScanScreen scanId={currentView.scanId} />}
-        {currentView.kind === "duplicates" && (
-          <>
-            <TopBar>
-              <TopBarTitle title="Duplicates" />
-            </TopBar>
-            <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-              <DuplicatesScreen />
-            </div>
-          </>
-        )}
+        {currentView.kind === "duplicates" && <DuplicatesScreen />}
       </motion.div>
     </AnimatePresence>
   );

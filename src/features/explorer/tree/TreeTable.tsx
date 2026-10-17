@@ -1,7 +1,8 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { FolderOpenIcon } from "lucide-react";
+import { ArrowUpIcon, FolderOpenIcon, ShieldAlertIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { EmptyState } from "@/components/EmptyState";
+import { Button } from "@/components/ui/button";
 import type { ScanId } from "@/lib/backend/scans";
 import type { NodeIndex } from "@/lib/backend/tree";
 import { useNodeActions } from "../actions/useNodeActions";
@@ -45,17 +46,23 @@ export function TreeTable({ scanId, shownFolder, parentOfShownFolder }: TreeTabl
       ? -1
       : model.rows.findIndex((row) => row.parent === model.lastExpandedFolder);
 
-  const isEmptyFolder =
-    model.rows.length === 0 || (model.rows.length === 1 && model.rows[0]?.kind === "emptyFolder");
-
   return (
     <div className="@container flex h-full min-h-0 flex-col">
       <TreeTableHeader sortOrder={sortOrder} onSortOrderChange={setSortOrder} />
-      {isEmptyFolder ? (
+      {model.emptyFolder !== null ? (
         <EmptyState
-          icon={FolderOpenIcon}
-          title="This folder is empty"
-          description="There is nothing inside it to show."
+          icon={model.emptyFolder.isWarning ? ShieldAlertIcon : FolderOpenIcon}
+          tone={model.emptyFolder.isWarning ? "warning" : "neutral"}
+          title={model.emptyFolder.title}
+          description={model.emptyFolder.description}
+          actions={
+            model.goUp === null ? undefined : (
+              <Button variant="outline" onClick={model.goUp}>
+                <ArrowUpIcon />
+                Go up
+              </Button>
+            )
+          }
         />
       ) : (
         <div
