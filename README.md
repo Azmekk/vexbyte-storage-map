@@ -16,6 +16,8 @@ A fast, good-looking disk space explorer for Windows with a built-in duplicate f
 
 ![Duplicate finder results with keep and remove choices](docs/screenshots/duplicates-results-dark.png)
 
+![Global file search across every indexed drive](docs/screenshots/search-dark.png)
+
 ## Features
 
 - Two scan methods: a parallel folder walk that works everywhere, and an MFT reader for NTFS drives (admin required) that is many times faster.
