@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use specta::Type;
 
 /// Identifies a group within one search result. Groups are numbered by descending wasted space.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Type,
+)]
 #[serde(transparent)]
 pub struct DuplicateGroupId(pub u32);
 

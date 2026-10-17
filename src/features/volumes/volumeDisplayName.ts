@@ -15,7 +15,10 @@ export function volumeDisplayName(volume: VolumeSummary): string {
   return trimmedLabel.length > 0 ? trimmedLabel : FALLBACK_NAME_BY_DRIVE_TYPE[volume.driveType];
 }
 
-/** For example `C:`. */
+const TRAILING_PATH_SEPARATORS = /[\\/]+$/;
+
+/** The mount point without its trailing separator, for example `C:` for `C:\`. */
 export function volumeDriveLabel(volume: VolumeSummary): string {
-  return `${volume.driveLetter}:`;
+  const trimmedMountPoint = volume.mountPoint.replace(TRAILING_PATH_SEPARATORS, "");
+  return trimmedMountPoint.length > 0 ? trimmedMountPoint : volume.mountPoint;
 }

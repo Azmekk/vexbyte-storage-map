@@ -49,7 +49,7 @@ export function HomeScreen({ volumesState, onRetryLoadingVolumes }: HomeScreenPr
           animate="visible"
         >
           {volumesState.volumes.map((volume) => (
-            <VolumeCard key={volume.driveLetter} volume={volume} />
+            <VolumeCard key={volume.mountPoint} volume={volume} />
           ))}
         </motion.div>
       )}

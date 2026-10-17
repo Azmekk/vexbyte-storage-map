@@ -5,13 +5,13 @@ import { calculateVolumeUsage, createVolumeUsageChartSegments } from "./volumeUs
 
 function createVolume(overrides: Partial<VolumeSummary> = {}): VolumeSummary {
   return {
-    driveLetter: "C",
+    mountPoint: "C:\\",
     label: "Windows",
     fileSystemName: "NTFS",
     totalBytes: 1000,
     freeBytes: 250,
     driveType: "fixed",
-    supportsMasterFileTableScan: true,
+    supportsFastScan: true,
     ...overrides,
   };
 }
@@ -55,7 +55,11 @@ describe("volumeDisplayName", () => {
     );
   });
 
-  it("formats the drive letter with a colon", () => {
-    expect(volumeDriveLabel(createVolume({ driveLetter: "D" }))).toBe("D:");
+  it("shows the mount point without its trailing separator", () => {
+    expect(volumeDriveLabel(createVolume({ mountPoint: "D:\\" }))).toBe("D:");
+    expect(volumeDriveLabel(createVolume({ mountPoint: "E:\\Mounts\\Backup\\" }))).toBe(
+      "E:\\Mounts\\Backup",
+    );
+    expect(volumeDriveLabel(createVolume({ mountPoint: "/" }))).toBe("/");
   });
 });

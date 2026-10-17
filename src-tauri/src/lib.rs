@@ -3,14 +3,20 @@
 
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 
-#[cfg(not(windows))]
-compile_error!("Vexbyte Storage Map only builds for Windows.");
-
 mod app_state;
 mod bindings_export;
 mod commands;
+mod duplicate_group_store;
+mod duplicate_search_registry;
+mod elevation;
+mod error_details;
+mod events;
+mod platform;
+mod scan_registry;
+mod startup_arguments;
 
 use app_state::AppState;
+use tauri::Manager;
 
 /// Starts the app and blocks until the last window closes.
 ///
@@ -20,6 +26,8 @@ use app_state::AppState;
 pub fn run() -> Result<(), tauri::Error> {
     tracing_subscriber::fmt::init();
 
+    let startup_scan_request =
+        startup_arguments::parse_startup_scan_request(std::env::args_os().skip(1));
     let bindings_builder = bindings_export::create_bindings_builder();
 
     #[cfg(debug_assertions)]
@@ -30,10 +38,13 @@ pub fn run() -> Result<(), tauri::Error> {
     let invoke_handler = bindings_builder.invoke_handler();
 
     tauri::Builder::default()
-        .manage(AppState::default())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(invoke_handler)
         .setup(move |app| {
             bindings_builder.mount_events(app);
+
+            let local_data_directory = app.path().local_data_dir()?;
+            app.manage(AppState::new(&local_data_directory, startup_scan_request));
             Ok(())
         })
         .run(tauri::generate_context!())

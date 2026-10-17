@@ -9,7 +9,8 @@ import {
 
 /** Everything the volume card and sidebar item display, already formatted. */
 export type VolumeDescription = {
-  driveLetter: string;
+  /** Identifies the volume, for example `C:\`. */
+  mountPoint: string;
   displayName: string;
   driveLabel: string;
   driveType: DriveType;
@@ -27,7 +28,7 @@ export function describeVolume(volume: VolumeSummary): VolumeDescription {
   const usage = calculateVolumeUsage(volume);
 
   return {
-    driveLetter: volume.driveLetter,
+    mountPoint: volume.mountPoint,
     displayName: volumeDisplayName(volume),
     driveLabel: volumeDriveLabel(volume),
     driveType: volume.driveType,
@@ -38,6 +39,6 @@ export function describeVolume(volume: VolumeSummary): VolumeDescription {
     usedPercentage: usage.usedPercentage,
     usedPercentageLabel: `${Math.round(usage.usedPercentage)}%`,
     usageChartSegments: createVolumeUsageChartSegments(usage),
-    supportsFastScan: volume.supportsMasterFileTableScan,
+    supportsFastScan: volume.supportsFastScan,
   };
 }

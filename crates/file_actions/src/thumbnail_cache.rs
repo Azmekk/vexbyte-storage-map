@@ -19,6 +19,14 @@ pub struct ThumbnailCache {
     directory: PathBuf,
 }
 
+/// A cached PNG thumbnail.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CachedThumbnail {
+    pub path: PathBuf,
+    /// True when no content preview existed and the file type icon was cached instead.
+    pub is_file_type_icon: bool,
+}
+
 /// Distinguishes temporary files written at the same moment by several threads.
 static TEMPORARY_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -46,26 +54,58 @@ impl ThumbnailCache {
         source_path: &Path,
         size_pixels: u32,
     ) -> Result<PathBuf, ThumbnailError> {
+        self.cached_thumbnail_for(source_path, size_pixels)
+            .map(|thumbnail| thumbnail.path)
+    }
+
+    /// Like [`Self::thumbnail_path_for`], and also tells whether the cached picture is the file
+    /// type icon rather than a preview of the content.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::thumbnail_path_for`].
+    pub fn cached_thumbnail_for(
+        &self,
+        source_path: &Path,
+        size_pixels: u32,
+    ) -> Result<CachedThumbnail, ThumbnailError> {
         let stamp =
             read_file_stamp(source_path).map_err(|source| ThumbnailError::SourceNotFound {
                 path: source_path.to_path_buf(),
                 source,
             })?;
-        let cached_path = self
-            .directory
-            .join(cache_file_name(source_path, size_pixels, &stamp));
-        if cached_path.is_file() {
-            return Ok(cached_path);
+        let cache_key = cache_key(source_path, size_pixels, &stamp);
+        let preview_path = self.directory.join(cache_file_name(&cache_key, false));
+        if preview_path.is_file() {
+            return Ok(CachedThumbnail {
+                path: preview_path,
+                is_file_type_icon: false,
+            });
+        }
+        let icon_path = self.directory.join(cache_file_name(&cache_key, true));
+        if icon_path.is_file() {
+            return Ok(CachedThumbnail {
+                path: icon_path,
+                is_file_type_icon: true,
+            });
         }
 
         let thumbnail = render_thumbnail_png(source_path, size_pixels)?;
+        let cached_path = if thumbnail.is_file_type_icon {
+            icon_path
+        } else {
+            preview_path
+        };
         self.store(&cached_path, &thumbnail.png_bytes)
             .map_err(|source| ThumbnailError::CacheWriteFailed {
                 path: cached_path.clone(),
                 source,
             })?;
 
-        Ok(cached_path)
+        Ok(CachedThumbnail {
+            path: cached_path,
+            is_file_type_icon: thumbnail.is_file_type_icon,
+        })
     }
 
     /// Writes to a temporary name first and renames, so readers never see a half-written PNG.
@@ -95,7 +135,8 @@ impl ThumbnailCache {
     }
 }
 
-fn cache_file_name(source_path: &Path, size_pixels: u32, stamp: &FileStamp) -> String {
+/// Everything that decides whether a cached thumbnail is still the right one.
+fn cache_key(source_path: &Path, size_pixels: u32, stamp: &FileStamp) -> String {
     let modified_nanoseconds = stamp
         .modified_time
         .duration_since(UNIX_EPOCH)
@@ -107,7 +148,16 @@ fn cache_file_name(source_path: &Path, size_pixels: u32, stamp: &FileStamp) -> S
     hasher.update(&stamp.size.to_le_bytes());
     hasher.update(&modified_nanoseconds.to_le_bytes());
 
-    format!("{:032x}-{size_pixels}.png", hasher.digest128())
+    format!("{:032x}-{size_pixels}", hasher.digest128())
+}
+
+/// File type icons get their own name so a cache hit still knows it holds an icon.
+fn cache_file_name(cache_key: &str, is_file_type_icon: bool) -> String {
+    if is_file_type_icon {
+        format!("{cache_key}-icon.png")
+    } else {
+        format!("{cache_key}.png")
+    }
 }
 
 #[cfg(test)]
@@ -130,16 +180,17 @@ mod tests {
     #[test]
     fn cache_names_change_with_path_size_and_file_changes() {
         let path = Path::new("photo.jpg");
-        let original = cache_file_name(path, 256, &stamp(100, 1));
+        let original = cache_key(path, 256, &stamp(100, 1));
 
-        assert_eq!(original, cache_file_name(path, 256, &stamp(100, 1)));
+        assert_eq!(original, cache_key(path, 256, &stamp(100, 1)));
         assert_ne!(
             original,
-            cache_file_name(Path::new("other.jpg"), 256, &stamp(100, 1))
+            cache_key(Path::new("other.jpg"), 256, &stamp(100, 1))
         );
-        assert_ne!(original, cache_file_name(path, 128, &stamp(100, 1)));
-        assert_ne!(original, cache_file_name(path, 256, &stamp(101, 1)));
-        assert_ne!(original, cache_file_name(path, 256, &stamp(100, 2)));
-        assert!(original.ends_with("-256.png"));
+        assert_ne!(original, cache_key(path, 128, &stamp(100, 1)));
+        assert_ne!(original, cache_key(path, 256, &stamp(101, 1)));
+        assert_ne!(original, cache_key(path, 256, &stamp(100, 2)));
+        assert!(cache_file_name(&original, false).ends_with("-256.png"));
+        assert!(cache_file_name(&original, true).ends_with("-256-icon.png"));
     }
 }

@@ -47,7 +47,7 @@ export function AppSidebar({ volumesState }: AppSidebarProps) {
                 ))}
               {volumesState.status === "ready" &&
                 volumesState.volumes.map((volume) => (
-                  <VolumeSidebarItem key={volume.driveLetter} volume={volume} />
+                  <VolumeSidebarItem key={volume.mountPoint} volume={volume} />
                 ))}
               {volumesState.status === "error" && (
                 <p className="px-2 text-sidebar-foreground/60 text-xs">Drives unavailable</p>

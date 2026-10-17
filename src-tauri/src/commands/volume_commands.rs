@@ -18,7 +18,7 @@ pub enum VolumeCommandError {
 impl From<VolumeListError> for VolumeCommandError {
     fn from(error: VolumeListError) -> Self {
         let details = match &error {
-            VolumeListError::LogicalDrivesQueryFailed { source } => source.message(),
+            VolumeListError::MountPointListFailed { source } => source.to_string(),
         };
 
         Self::VolumeListFailed { details }

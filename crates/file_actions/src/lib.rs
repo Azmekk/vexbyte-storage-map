@@ -26,4 +26,4 @@ pub use shell_thumbnails::{
     MAXIMUM_THUMBNAIL_SIZE_PIXELS, MINIMUM_THUMBNAIL_SIZE_PIXELS, ThumbnailError, ThumbnailPixels,
     ThumbnailPng, render_thumbnail_png,
 };
-pub use thumbnail_cache::ThumbnailCache;
+pub use thumbnail_cache::{CachedThumbnail, ThumbnailCache};

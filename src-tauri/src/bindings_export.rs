@@ -2,9 +2,13 @@ use std::path::Path;
 
 use specta_typescript::Typescript;
 use tauri::Wry;
-use tauri_specta::{Builder, collect_commands};
+use tauri_specta::{Builder, collect_commands, collect_events};
 
-use crate::commands::volume_commands;
+use crate::commands::{
+    duplicate_commands, elevation_commands, file_action_commands, scan_commands, tree_commands,
+    volume_commands,
+};
+use crate::events::{DuplicateSearchFinished, ScanFinished};
 
 /// Where the generated bindings live in the frontend. Built from the manifest directory so the
 /// export works no matter which directory the app or the test runs from.
@@ -16,7 +20,40 @@ const TYPESCRIPT_BINDINGS_PATH: &str = concat!(
 /// Registers every command and event that crosses the IPC boundary.
 pub fn create_bindings_builder() -> Builder<Wry> {
     Builder::<Wry>::new()
-        .commands(collect_commands![volume_commands::list_volumes])
+        .commands(collect_commands![
+            volume_commands::list_volumes,
+            scan_commands::start_scan,
+            scan_commands::cancel_scan,
+            scan_commands::get_scan_summary,
+            scan_commands::list_scans,
+            scan_commands::discard_scan,
+            tree_commands::get_children,
+            tree_commands::get_node_details,
+            tree_commands::get_path_to_root,
+            tree_commands::get_visualization_subtree,
+            tree_commands::get_largest_files,
+            tree_commands::get_file_type_breakdown,
+            tree_commands::search_nodes,
+            file_action_commands::reveal_in_explorer,
+            file_action_commands::open_with_default_app,
+            file_action_commands::reveal_duplicate_in_explorer,
+            file_action_commands::open_duplicate_with_default_app,
+            file_action_commands::move_to_recycle_bin,
+            file_action_commands::get_thumbnail,
+            duplicate_commands::get_default_duplicate_folders,
+            duplicate_commands::start_duplicate_search,
+            duplicate_commands::cancel_duplicate_search,
+            duplicate_commands::get_duplicate_search_summary,
+            duplicate_commands::discard_duplicate_search,
+            duplicate_commands::get_duplicate_groups,
+            duplicate_commands::set_keep_rule,
+            duplicate_commands::set_file_keep,
+            duplicate_commands::recycle_duplicates,
+            elevation_commands::get_elevation_status,
+            elevation_commands::relaunch_elevated,
+            elevation_commands::get_startup_scan_request,
+        ])
+        .events(collect_events![ScanFinished, DuplicateSearchFinished])
         // Byte counts are u64. JavaScript numbers hold integers exactly up to 2^53 bytes (8 PiB),
         // far above any single volume, so plain numbers are used instead of BigInt.
         .dangerously_cast_bigints_to_number()
