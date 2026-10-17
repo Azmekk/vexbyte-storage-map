@@ -49,7 +49,7 @@ The library crates in `crates/` keep their descriptive names (`disk_scanner`, `d
 
 - Near-duplicate detection (similar images, audio fingerprinting).
 - Cleanup recommendations / issue detection. Keep the architecture open to it, but build nothing for it now.
-- Non-Windows platforms. Code must compile only for Windows; do not add cross-platform abstractions.
+- Non-Windows builds for 0.1.0. Windows is the only shipping target for now, but the code must stay easily portable to macOS and Linux later; see section 16 (Portability rules).
 - Scanning or deduplicating system folders. The duplicate finder never touches Program Files, Windows, AppData or similar.
 
 ---
@@ -600,3 +600,47 @@ These rules bind every contributor, human or agent, during development.
 - **No automated test ever calls the Recycle Bin or any destructive shell operation.** `move_to_recycle_bin` and `recycle_duplicates` are covered only by (a) unit tests of the planning logic (which files would be moved, keep-rule enforcement, revalidation) and (b) manual testing by the maintainer. Tests may assert that the planning layer refuses to empty a duplicate group, but must never execute the operation.
 - **Scanning is read-only.** Both scan methods open volumes and directories with read access only. The MFT reader never writes to a volume handle. Cloud placeholder files are never opened.
 - **Development builds run against real drives only in read-only paths** (scanning, listing, hashing). Anything that changes the file system is exercised only against temporary fixtures, and only by hand.
+
+---
+
+## 16. Portability rules
+
+Windows is the only build target for 0.1.0, but the app must stay easily portable to macOS and Linux. These rules keep platform code at one seam.
+
+### Layout
+
+- Each crate has a `platform/` module instead of `windows_api/`. `platform/mod.rs` does `#[cfg(windows)] mod windows; #[cfg(windows)] pub use windows::*;` (and the same for a future `unix`). `platform/windows/` holds the Win32 wrappers, one per file.
+- No trait, no dynamic dispatch, no runtime selection: each backend exposes the same free functions with the same signatures and the compiler enforces the contract.
+
+### Platform-neutral types at the seam
+
+Functions in `platform/` take and return only crate-owned types, never `windows::` types.
+
+- `DirectoryEntry { name, kind, logical_size, allocated_size, modified_time: SystemTime, identity: FileIdentity, flags: EntryFlags }`
+- `FileIdentity` is an opaque newtype (Windows: volume serial + file ID; Unix later: device + inode). Only `Eq`, `Hash`, `Clone`, `Copy` are exposed. The folder walk and the duplicate finder use it for hard-link tracking. The MFT module may keep `FileReference(u64)` internally.
+- `EntryFlags` bitflags with neutral names: `Symlink`, `Junction`, `CloudPlaceholder`, `Hidden`, `System`, `Inaccessible`, `Compressed`, `Sparse`.
+- `VolumeSummary { mount_point: PathBuf, label, file_system, total, free, supports_fast_scan }`. `mount_point` (for example `C:\`) is the primary identifier, not a drive letter.
+- Platform errors are `thiserror` enums with `source: std::io::Error`. On Windows build them with `io::Error::from_raw_os_error` or `.into()` from `windows::core::Error` so the exact Win32 code and message are kept. `windows::core::Error` never appears in a public type outside `platform/windows/`.
+- Times cross the seam as `SystemTime`, converted inside the backend. The file tree `Node` may still store a compact `u64` internally.
+
+### Rules
+
+- `windows`, `windows-sys` and `libc` appear only under `[target.'cfg(windows)'.dependencies]` (and later `cfg(unix)`) in Cargo.toml.
+- `#[cfg(windows)]` is allowed only in `platform/mod.rs`, in the `mft` module root (the MFT scanner is the one legitimately Windows-only feature, gated as a whole), in `src-tauri/src/elevation.rs`, and in Cargo.toml. Nowhere else. A CI grep enforces this.
+- No path handling that assumes backslashes or drive letters outside `platform/`. Use `Path` and `PathBuf` methods. The `\?\` extended-length prefix is applied inside `platform/windows/` only.
+- Use existing cross-platform crates where they already wrap the OS correctly: `trash` for the Recycle Bin (its Windows backend uses `IFileOperation` with undo) and `dirs` for the known folders (Pictures, Videos, Music, Documents, Downloads, Desktop). Reveal in file manager, thumbnails (`IShellItemImageFactory`), SSD seek-penalty detection, cloud-placeholder detection and the MFT scanner stay as Windows implementations inside `platform/windows/`.
+- Fast scan is exposed to the UI purely as a capability (`supports_fast_scan` on `VolumeSummary`). The UI already handles "fast scan unavailable" for exFAT or unelevated; other platforms hit the same path.
+- CI runs `cargo check -p disk_scanner -p duplicate_finder -p file_actions` on `ubuntu-latest` with `continue-on-error: true`. It is expected to fail until unix backends exist; its purpose is to make Windows assumptions visible early.
+
+### Feature matrix
+
+| Feature | Windows (now) | macOS (later) | Linux (later) |
+|---|---|---|---|
+| Folder walk | yes | yes | yes |
+| Fast scan | MFT | none | none |
+| Elevation | `runas` | not needed | not needed |
+| Recycle | `IFileOperation` via `trash` | `trash` | `trash` |
+| Reveal | Explorer | `open -R` | `xdg-open` |
+| Thumbnails | shell image factory | QuickLook | own decoder + icons |
+| Cloud placeholders | file attributes | dataless via `getattrlist` | none |
+| SSD detection | seek penalty ioctl | IOKit | sysfs `rotational` |
