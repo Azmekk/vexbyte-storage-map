@@ -1,46 +1,10 @@
-use std::fmt;
+use std::io;
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::windows_api::{
-    CriticalErrorDialogSuppression, DiskSpace, VolumeInformation, is_drive_not_ready_error,
-    query_disk_space, query_drive_type, query_logical_drive_letters, query_volume_information,
-};
-
-/// The letter a volume is mounted at, always uppercase, for example `C`.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Type,
-)]
-#[serde(transparent)]
-pub struct DriveLetter(char);
-
-impl DriveLetter {
-    /// Returns `None` unless `letter` is an ASCII letter.
-    #[must_use]
-    pub fn new(letter: char) -> Option<Self> {
-        letter
-            .is_ascii_alphabetic()
-            .then(|| Self(letter.to_ascii_uppercase()))
-    }
-
-    #[must_use]
-    pub fn as_char(self) -> char {
-        self.0
-    }
-
-    /// The root directory of the volume, for example `C:\`.
-    #[must_use]
-    pub fn root_path(self) -> String {
-        format!("{}:\\", self.0)
-    }
-}
-
-impl fmt::Display for DriveLetter {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}:", self.0)
-    }
-}
+use crate::platform;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -57,7 +21,8 @@ pub enum DriveType {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VolumeSummary {
-    pub drive_letter: DriveLetter,
+    /// Where the volume is mounted, for example `C:\`. This identifies the volume.
+    pub mount_point: PathBuf,
     /// The user-visible volume label. Empty when the volume has none.
     pub label: String,
     /// For example `NTFS`, `exFAT` or `FAT32`.
@@ -65,7 +30,10 @@ pub struct VolumeSummary {
     pub total_bytes: u64,
     pub free_bytes: u64,
     pub drive_type: DriveType,
-    pub supports_master_file_table_scan: bool,
+    /// The file system allows a fast scan. On Windows that is an NTFS volume, read through its
+    /// Master File Table, which additionally needs administrator rights; see
+    /// [`crate::fast_scan_availability`].
+    pub supports_fast_scan: bool,
 }
 
 impl VolumeSummary {
@@ -75,50 +43,36 @@ impl VolumeSummary {
     }
 }
 
+/// What a platform backend reports about one mounted volume.
+pub(crate) struct VolumeDetails {
+    pub(crate) label: String,
+    pub(crate) file_system_name: String,
+    pub(crate) total_bytes: u64,
+    pub(crate) free_bytes: u64,
+    pub(crate) drive_type: DriveType,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum VolumeListError {
-    #[error("could not query the logical drives of this computer")]
-    LogicalDrivesQueryFailed { source: windows::core::Error },
-}
-
-#[derive(Debug, thiserror::Error)]
-enum VolumeQueryError {
-    #[error("could not read the volume information of {drive_letter}")]
-    VolumeInformationQueryFailed {
-        drive_letter: DriveLetter,
-        source: windows::core::Error,
-    },
-    #[error("could not read the free space of {drive_letter}")]
-    DiskSpaceQueryFailed {
-        drive_letter: DriveLetter,
-        source: windows::core::Error,
-    },
-}
-
-impl VolumeQueryError {
-    fn is_drive_not_ready(&self) -> bool {
-        match self {
-            Self::VolumeInformationQueryFailed { source, .. }
-            | Self::DiskSpaceQueryFailed { source, .. } => is_drive_not_ready_error(source),
-        }
-    }
+    #[error("could not list the mounted volumes of this computer")]
+    MountPointListFailed { source: io::Error },
 }
 
 /// Lists every mounted volume that is ready to be read.
 ///
-/// Drives that are not ready, such as an empty optical drive or a disconnected network share,
+/// Volumes that are not ready, such as an empty optical drive or a disconnected network share,
 /// are skipped instead of failing the whole list.
 ///
 /// # Errors
 ///
-/// Fails only when Windows cannot report which drive letters are in use.
+/// Fails only when the operating system cannot report which volumes are mounted.
 pub fn list_volumes() -> Result<Vec<VolumeSummary>, VolumeListError> {
-    let _dialog_suppression = CriticalErrorDialogSuppression::for_current_thread();
+    let _prompt_suppression = platform::MediaErrorPromptSuppression::for_current_thread();
 
-    let drive_letters = query_logical_drive_letters()
-        .map_err(|source| VolumeListError::LogicalDrivesQueryFailed { source })?;
+    let mount_points = platform::list_volume_mount_points()
+        .map_err(|source| VolumeListError::MountPointListFailed { source })?;
 
-    let volumes = drive_letters
+    let volumes = mount_points
         .into_iter()
         .filter_map(read_volume_summary_or_skip)
         .collect();
@@ -126,58 +80,37 @@ pub fn list_volumes() -> Result<Vec<VolumeSummary>, VolumeListError> {
     Ok(volumes)
 }
 
-fn read_volume_summary_or_skip(drive_letter: DriveLetter) -> Option<VolumeSummary> {
-    match read_volume_summary(drive_letter) {
-        Ok(volume_summary) => volume_summary,
-        Err(error) if error.is_drive_not_ready() => {
-            tracing::debug!(%drive_letter, "skipping drive that is not ready");
+fn read_volume_summary_or_skip(mount_point: PathBuf) -> Option<VolumeSummary> {
+    match platform::query_volume_details(&mount_point) {
+        Ok(Some(details)) => Some(volume_summary_from_details(mount_point, details)),
+        Ok(None) => None,
+        Err(error) if platform::is_volume_not_ready_error(&error) => {
+            tracing::debug!(mount_point = %mount_point.display(), "skipping volume that is not ready");
             None
         }
         Err(error) => {
-            tracing::warn!(%drive_letter, %error, "skipping drive that could not be read");
+            tracing::warn!(
+                mount_point = %mount_point.display(),
+                %error,
+                "skipping volume that could not be read"
+            );
             None
         }
     }
 }
 
-fn read_volume_summary(
-    drive_letter: DriveLetter,
-) -> Result<Option<VolumeSummary>, VolumeQueryError> {
-    let root_path = drive_letter.root_path();
+fn volume_summary_from_details(mount_point: PathBuf, details: VolumeDetails) -> VolumeSummary {
+    let supports_fast_scan = platform::file_system_supports_fast_scan(&details.file_system_name);
 
-    let Some(drive_type) = query_drive_type(&root_path) else {
-        return Ok(None);
-    };
-
-    let VolumeInformation {
-        label,
-        file_system_name,
-    } = query_volume_information(&root_path).map_err(|source| {
-        VolumeQueryError::VolumeInformationQueryFailed {
-            drive_letter,
-            source,
-        }
-    })?;
-
-    let DiskSpace {
-        total_bytes,
-        free_bytes,
-    } = query_disk_space(&root_path).map_err(|source| VolumeQueryError::DiskSpaceQueryFailed {
-        drive_letter,
-        source,
-    })?;
-
-    let supports_master_file_table_scan = file_system_name.eq_ignore_ascii_case("NTFS");
-
-    Ok(Some(VolumeSummary {
-        drive_letter,
-        label,
-        file_system_name,
-        total_bytes,
-        free_bytes,
-        drive_type,
-        supports_master_file_table_scan,
-    }))
+    VolumeSummary {
+        mount_point,
+        label: details.label,
+        file_system_name: details.file_system_name,
+        total_bytes: details.total_bytes,
+        free_bytes: details.free_bytes,
+        drive_type: details.drive_type,
+        supports_fast_scan,
+    }
 }
 
 #[cfg(test)]
@@ -195,23 +128,9 @@ mod tests {
             assert!(
                 volume.total_bytes >= volume.free_bytes,
                 "{} reports more free than total space",
-                volume.drive_letter
+                volume.mount_point.display()
             );
+            assert!(volume.mount_point.is_absolute());
         }
-    }
-
-    #[test]
-    fn drive_letter_is_uppercased_and_formats_root_path() {
-        let drive_letter = DriveLetter::new('d').unwrap();
-
-        assert_eq!(drive_letter.as_char(), 'D');
-        assert_eq!(drive_letter.root_path(), "D:\\");
-        assert_eq!(drive_letter.to_string(), "D:");
-    }
-
-    #[test]
-    fn drive_letter_rejects_non_letters() {
-        assert_eq!(DriveLetter::new('1'), None);
-        assert_eq!(DriveLetter::new('é'), None);
     }
 }
