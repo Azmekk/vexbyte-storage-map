@@ -45,16 +45,3 @@ jobs:
 
   # The library crates must stay portable (PLAN.md section 16). Expected to fail until unix
   # backends exist; it only makes Windows assumptions visible early.
-  portability:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.99.1
-
-      - uses: Swatinem/rust-cache@v2
-
-      - run: cargo check -p disk_scanner -p duplicate_finder -p file_actions -p file_categories

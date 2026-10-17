@@ -1,0 +1,21 @@
+# Linux cargo check of the library crates. It is expected to fail until unix backends exist
+# (PLAN.md section 16); run it by hand to see which Windows assumptions remain.
+name: Portability check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  portability:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.1
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo check -p disk_scanner -p duplicate_finder -p file_actions -p file_categories
