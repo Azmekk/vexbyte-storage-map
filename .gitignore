@@ -1,0 +1,20 @@
+# Node
+node_modules/
+dist/
+
+# Rust
+target/
+
+# Tauri
+src-tauri/gen/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+
+# Local tooling
+.claude/
+*.log
