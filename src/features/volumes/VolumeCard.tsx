@@ -1,4 +1,4 @@
-import { ZapIcon } from "lucide-react";
+import { CloudIcon, ZapIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,10 +27,14 @@ export function VolumeCard({ volume, isElevated }: VolumeCardProps) {
         <CardHeader>
           <div className="flex items-start gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-              <DriveTypeIcon
-                driveType={volume.driveType}
-                className="size-5 text-muted-foreground"
-              />
+              {volume.isCloudDrive ? (
+                <CloudIcon className="size-5 text-muted-foreground" aria-hidden />
+              ) : (
+                <DriveTypeIcon
+                  driveType={volume.driveType}
+                  className="size-5 text-muted-foreground"
+                />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <CardTitle className="truncate">{volume.displayName}</CardTitle>
@@ -39,6 +43,12 @@ export function VolumeCard({ volume, isElevated }: VolumeCardProps) {
               </CardDescription>
             </div>
           </div>
+          {volume.isCloudDrive && (
+            <Badge variant="secondary" className="mt-3 w-fit">
+              <CloudIcon />
+              Cloud drive
+            </Badge>
+          )}
           {volume.supportsFastScan && (
             <Badge variant="secondary" className="mt-3 w-fit">
               <ZapIcon />
@@ -65,12 +75,18 @@ export function VolumeCard({ volume, isElevated }: VolumeCardProps) {
           </dl>
         </CardContent>
         <CardFooter className="mt-auto">
-          <ScanTargetButton
-            mountPoint={volume.mountPoint}
-            label={volume.driveLabel}
-            supportsFastScan={volume.supportsFastScan}
-            isElevated={isElevated}
-          />
+          {volume.isCloudDrive ? (
+            <p className="text-muted-foreground text-sm">
+              Streamed cloud drives aren't scanned, so nothing gets downloaded.
+            </p>
+          ) : (
+            <ScanTargetButton
+              mountPoint={volume.mountPoint}
+              label={volume.driveLabel}
+              supportsFastScan={volume.supportsFastScan}
+              isElevated={isElevated}
+            />
+          )}
         </CardFooter>
       </Card>
     </motion.div>

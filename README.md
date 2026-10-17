@@ -29,7 +29,9 @@ A fast, good-looking disk space explorer for Windows with a built-in duplicate f
 ## Safety
 
 Scans are read-only: both scan methods open drives and folders for reading only, and cloud
-placeholder files (OneDrive "online-only" files) are never opened, so nothing gets downloaded. The
+placeholder files (OneDrive "online-only" files) are never opened, so nothing gets downloaded.
+Streamed cloud drives such as Google Drive for desktop are recognized and never scanned or searched
+for duplicates, because reading them would download their files. The
 only action that changes anything on disk is **Move to Recycle Bin**, from the explorer or the
 duplicates screen. It always shows a confirmation dialog listing exactly what will move, the
 duplicate finder re-checks every file right before moving it and always keeps at least one copy,

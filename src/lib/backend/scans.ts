@@ -37,6 +37,8 @@ function describeScanCommandError(commandError: ScanCommandError): string {
       return "This scan is no longer available. Please scan again.";
     case "fastScanRequiresElevation":
       return "The fast scan needs administrator rights. Restart as admin or use the standard scan.";
+    case "cloudVirtualVolumeNotScanned":
+      return `${commandError.mountPoint} is a streamed cloud drive. Cloud drives aren't scanned, so nothing gets downloaded.`;
     case "scanStartFailed":
       return `The scan could not be started. ${commandError.details}`;
   }

@@ -22,6 +22,8 @@ export type VolumeDescription = {
   usedPercentageLabel: string;
   usageChartSegments: VolumeUsageChartSegment[];
   supportsFastScan: boolean;
+  /** A streamed cloud drive such as Google Drive for desktop, which is never scanned. */
+  isCloudDrive: boolean;
 };
 
 export function describeVolume(volume: VolumeSummary): VolumeDescription {
@@ -40,5 +42,6 @@ export function describeVolume(volume: VolumeSummary): VolumeDescription {
     usedPercentageLabel: `${Math.round(usage.usedPercentage)}%`,
     usageChartSegments: createVolumeUsageChartSegments(usage),
     supportsFastScan: volume.supportsFastScan,
+    isCloudDrive: volume.kind === "cloudVirtual",
   };
 }

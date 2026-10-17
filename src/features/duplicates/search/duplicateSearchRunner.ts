@@ -1,4 +1,3 @@
-import { BackendCommandError } from "@/lib/backend/BackendCommandError";
 import {
   cancelDuplicateSearch,
   type DuplicateSearchFailure,
@@ -11,6 +10,7 @@ import {
 } from "@/lib/backend/duplicates";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
 import { describeInvalidSettings } from "../setup/buildDuplicateSearchSettings";
+import { describeSetupRejection } from "../setup/describeSetupRejection";
 import { searchIdOfRun, useDuplicateSearchStore } from "./useDuplicateSearchStore";
 
 /*
@@ -20,23 +20,6 @@ import { searchIdOfRun, useDuplicateSearchStore } from "./useDuplicateSearchStor
  */
 
 let currentRunNumber = 0;
-
-function isInvalidSettingsError(error: unknown): error is BackendCommandError<{
-  kind: "invalidSettings";
-  details: string;
-}> {
-  if (!(error instanceof BackendCommandError)) {
-    return false;
-  }
-
-  const commandError: unknown = error.commandError;
-  return (
-    typeof commandError === "object" &&
-    commandError !== null &&
-    "kind" in commandError &&
-    commandError.kind === "invalidSettings"
-  );
-}
 
 function describeSearchFailure(failure: DuplicateSearchFailure): string {
   switch (failure.kind) {
@@ -81,8 +64,9 @@ function discardInBackground(searchId: DuplicateSearchId | null): void {
 }
 
 /**
- * Starts a search with `settings`, replacing any previous one. Invalid settings send the user
- * back to the setup step with the reason; other failures show the failed state.
+ * Starts a search with `settings`, replacing any previous one. Invalid settings (including a
+ * folder on a cloud drive) send the user back to the setup step with the reason; other failures
+ * show the failed state.
  */
 export async function runDuplicateSearch(settings: DuplicateSearchSettings): Promise<void> {
   currentRunNumber += 1;
@@ -127,9 +111,10 @@ export async function runDuplicateSearch(settings: DuplicateSearchSettings): Pro
       return;
     }
 
-    if (isInvalidSettingsError(error)) {
+    const setupRejection = describeSetupRejection(error);
+    if (setupRejection !== null) {
       store.setRun({ status: "idle" });
-      store.setSetupErrorMessage(describeInvalidSettings(error.commandError.details));
+      store.setSetupErrorMessage(setupRejection);
       return;
     }
 

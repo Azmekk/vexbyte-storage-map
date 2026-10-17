@@ -51,6 +51,8 @@ function describeDuplicateCommandError(commandError: DuplicateCommandError): str
   switch (commandError.kind) {
     case "invalidSettings":
       return commandError.details;
+    case "cloudVirtualFolderNotAllowed":
+      return `${commandError.folder} is on a streamed cloud drive. Cloud drives aren't searched, so nothing gets downloaded.`;
     case "searchNotFound":
       return "This duplicate search is no longer available. Please search again.";
     case "searchNotFinished":
@@ -79,8 +81,18 @@ export async function getDefaultDuplicateFolders(): Promise<SuggestedFolder[]> {
 }
 
 /**
+ * Checks one folder before it is added to the setup step. A system folder rejects with
+ * `invalidSettings`, a folder on a cloud drive with `cloudVirtualFolderNotAllowed`.
+ */
+export async function checkDuplicateSearchFolder(folder: string): Promise<void> {
+  const result = await commands.checkDuplicateSearchFolder(folder);
+  unwrapCommandResult(result, describeDuplicateCommandError);
+}
+
+/**
  * Validates `settings` and starts the search in the background; returns its id right away.
- * Invalid settings (no folders, a system folder, ...) reject with `invalidSettings`.
+ * Invalid settings (no folders, a system folder, ...) reject with `invalidSettings`, a folder on
+ * a cloud drive with `cloudVirtualFolderNotAllowed`.
  */
 export async function startDuplicateSearch(
   settings: DuplicateSearchSettings,

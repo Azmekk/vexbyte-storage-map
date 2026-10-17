@@ -39,6 +39,15 @@ describe("describeScanTarget", () => {
 });
 
 describe("describeScanFailure", () => {
+  it("does not offer another scan of a cloud drive", () => {
+    const description = describeScanFailure({
+      kind: "cloudVirtualVolumeNotScanned",
+      mountPoint: "G:\\",
+    });
+    expect(description.suggestsStandardScan).toBe(false);
+    expect(description.explanation).toContain("G:\\");
+  });
+
   it("suggests a standard scan when the fast scan is not possible", () => {
     const description = describeScanFailure({ kind: "fastScanUnsupported", path: "F:\\" });
     expect(description.suggestsStandardScan).toBe(true);

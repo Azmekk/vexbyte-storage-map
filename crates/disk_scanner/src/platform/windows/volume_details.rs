@@ -6,6 +6,7 @@ use ::windows::Win32::Storage::FileSystem::GetVolumePathNameW;
 use ::windows::core::PCWSTR;
 
 use super::disk_space::{DiskSpace, query_disk_space};
+use super::dos_device_name::query_dos_device_name;
 use super::drive_type::query_drive_type;
 use super::io_error::to_io_error;
 use super::path_encoding::to_null_terminated_wide_path;
@@ -13,7 +14,8 @@ use super::volume_information::{VolumeInformation, query_volume_information};
 use super::wide_string::from_null_terminated_wide_buffer;
 use crate::volumes::VolumeDetails;
 
-/// Reads label, file system, space and drive type of the volume mounted at `mount_point`.
+/// Reads label, file system, serial number, space, drive type and DOS device name of the volume
+/// mounted at `mount_point`.
 ///
 /// Returns `Ok(None)` when no volume is mounted there.
 pub(crate) fn query_volume_details(mount_point: &Path) -> io::Result<Option<VolumeDetails>> {
@@ -26,6 +28,7 @@ pub(crate) fn query_volume_details(mount_point: &Path) -> io::Result<Option<Volu
     let VolumeInformation {
         label,
         file_system_name,
+        serial_number,
     } = query_volume_information(&root_path).map_err(|error| to_io_error(&error))?;
 
     let DiskSpace {
@@ -33,12 +36,22 @@ pub(crate) fn query_volume_details(mount_point: &Path) -> io::Result<Option<Volu
         free_bytes,
     } = query_disk_space(&root_path).map_err(|error| to_io_error(&error))?;
 
+    let dos_device_name = match query_dos_device_name(mount_point) {
+        Ok(device_name) => Some(device_name),
+        Err(error) => {
+            tracing::debug!(mount_point = %mount_point.display(), %error, "no DOS device name");
+            None
+        }
+    };
+
     Ok(Some(VolumeDetails {
         label,
         file_system_name,
         total_bytes,
         free_bytes,
         drive_type,
+        serial_number,
+        dos_device_name,
     }))
 }
 

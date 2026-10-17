@@ -45,6 +45,7 @@ pub fn create_bindings_builder() -> Builder<Wry> {
             file_action_commands::move_to_recycle_bin,
             file_action_commands::get_thumbnail,
             duplicate_commands::get_default_duplicate_folders,
+            duplicate_commands::check_duplicate_search_folder,
             duplicate_commands::start_duplicate_search,
             duplicate_commands::cancel_duplicate_search,
             duplicate_commands::get_duplicate_search_summary,

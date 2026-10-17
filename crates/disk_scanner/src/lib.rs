@@ -14,6 +14,7 @@ mod mft;
 pub mod scan;
 pub mod scan_method;
 pub mod scan_progress;
+pub mod volume_kind;
 pub mod volumes;
 
 mod platform;
@@ -36,11 +37,16 @@ pub use mft::{
     DEFAULT_MFT_CHUNK_SIZE_BYTES, DataRunError, MftChunkReadError, MftExtentError, MftScanError,
 };
 pub use scan::{
-    ScanError, ScanOptions, ScanResult, ScanSummary, ScanTarget, scan, scan_with_options,
+    ScanError, ScanOptions, ScanResult, ScanSummary, ScanTarget, refuse_cloud_virtual_target, scan,
+    scan_with_options,
 };
 pub use scan_method::ScanMethod;
 pub use scan_progress::{
     NoProgressReporting, ScanPhase, ScanProgressReporter, ScanProgressUpdate,
     TopLevelDirectoryProgress,
+};
+pub use volume_kind::{
+    GOOGLE_DRIVE_VOLUME_SERIAL_NUMBER, VolumeClassificationFacts, VolumeKind, classify_volume,
+    volume_kind_for_path,
 };
 pub use volumes::{DriveType, VolumeListError, VolumeSummary, list_volumes};

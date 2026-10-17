@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::platform;
+use crate::volume_kind::{VolumeClassificationFacts, VolumeKind, classify_volume};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -30,9 +31,11 @@ pub struct VolumeSummary {
     pub total_bytes: u64,
     pub free_bytes: u64,
     pub drive_type: DriveType,
+    /// What the volume really is. A [`VolumeKind::CloudVirtual`] volume is never scanned.
+    pub kind: VolumeKind,
     /// The file system allows a fast scan. On Windows that is an NTFS volume, read through its
     /// Master File Table, which additionally needs administrator rights; see
-    /// [`crate::fast_scan_availability`].
+    /// [`crate::fast_scan_availability`]. Always false for a cloud virtual volume.
     pub supports_fast_scan: bool,
 }
 
@@ -40,6 +43,11 @@ impl VolumeSummary {
     #[must_use]
     pub fn used_bytes(&self) -> u64 {
         self.total_bytes.saturating_sub(self.free_bytes)
+    }
+
+    #[must_use]
+    pub fn is_cloud_virtual(&self) -> bool {
+        self.kind.is_cloud_virtual()
     }
 }
 
@@ -50,6 +58,20 @@ pub(crate) struct VolumeDetails {
     pub(crate) total_bytes: u64,
     pub(crate) free_bytes: u64,
     pub(crate) drive_type: DriveType,
+    pub(crate) serial_number: u32,
+    /// The NT device behind the drive letter, when it could be read.
+    pub(crate) dos_device_name: Option<String>,
+}
+
+impl VolumeDetails {
+    pub(crate) fn kind(&self) -> VolumeKind {
+        classify_volume(&VolumeClassificationFacts {
+            drive_type: self.drive_type,
+            label: &self.label,
+            serial_number: self.serial_number,
+            dos_device_name: self.dos_device_name.as_deref(),
+        })
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -100,7 +122,9 @@ fn read_volume_summary_or_skip(mount_point: PathBuf) -> Option<VolumeSummary> {
 }
 
 fn volume_summary_from_details(mount_point: PathBuf, details: VolumeDetails) -> VolumeSummary {
-    let supports_fast_scan = platform::file_system_supports_fast_scan(&details.file_system_name);
+    let kind = details.kind();
+    let supports_fast_scan = !kind.is_cloud_virtual()
+        && platform::file_system_supports_fast_scan(&details.file_system_name);
 
     VolumeSummary {
         mount_point,
@@ -109,6 +133,7 @@ fn volume_summary_from_details(mount_point: PathBuf, details: VolumeDetails) -> 
         total_bytes: details.total_bytes,
         free_bytes: details.free_bytes,
         drive_type: details.drive_type,
+        kind,
         supports_fast_scan,
     }
 }

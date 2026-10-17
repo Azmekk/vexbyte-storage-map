@@ -107,6 +107,21 @@ Needs a OneDrive folder with **Files On-Demand** and at least one file marked
 4. Check File Explorer again: the file still shows the cloud icon, nothing was downloaded, and the
    OneDrive tray icon shows no download activity.
 
+## 4b. Cloud drives
+
+Needs Google Drive for desktop in streaming mode (its drive letter, for example G:). Do not scan
+or search the drive any other way while testing.
+
+1. Open the home screen.
+   - The Google Drive card shows a **Cloud drive** badge, no fast scan badge and no Scan button;
+     instead it reads "Streamed cloud drives aren't scanned, so nothing gets downloaded."
+   - In the sidebar the drive has a cloud icon and is greyed out; clicking it does nothing.
+2. **Scan folder…** and pick a folder on the Google Drive.
+   - A "Cloud drives aren't scanned" toast appears and no scan screen opens.
+3. Open **Duplicates**, click **Add folder** and pick a folder on the Google Drive.
+   - The folder is not added; the setup step shows the cloud drive message inline.
+4. The Google Drive tray icon shows no download activity.
+
 ## 5. exFAT fallback
 
 Needs an exFAT (or FAT32) USB drive.

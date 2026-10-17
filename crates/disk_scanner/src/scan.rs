@@ -1,5 +1,5 @@
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,7 @@ use crate::mft::{DEFAULT_MFT_CHUNK_SIZE_BYTES, MftScanError, scan_volume_with_mf
 use crate::platform;
 use crate::scan_method::ScanMethod;
 use crate::scan_progress::{ScanPhase, ScanProgressReporter, ScanProgressUpdate};
+use crate::volume_kind::{VolumeKind, mount_point_and_kind_of_volume_holding};
 
 /// What to scan.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
@@ -78,6 +79,11 @@ pub enum ScanError {
     FastScanUnsupported { path: PathBuf },
     #[error("could not find the volume that contains {}", path.display())]
     VolumeLookupFailed { path: PathBuf, source: io::Error },
+    #[error(
+        "{} is a streamed cloud drive and is not scanned, so nothing gets downloaded",
+        mount_point.display()
+    )]
+    CloudVirtualVolumeNotScanned { mount_point: PathBuf },
     #[error("{} was not found on its volume", path.display())]
     FolderNotFoundOnVolume { path: PathBuf },
     #[error(transparent)]
@@ -112,8 +118,9 @@ impl From<MftScanError> for ScanError {
 ///
 /// # Errors
 ///
-/// Fails when the target cannot be read, when the fast scan is not available for it, or
-/// when the scan is cancelled. Folders that cannot be listed do not fail the scan; they are
+/// Fails when the target lies on a cloud virtual volume such as Google Drive for desktop (walking
+/// it would download files), when the target cannot be read, when the fast scan is not available
+/// for it, or when the scan is cancelled. Folders that cannot be listed do not fail the scan; they are
 /// flagged inaccessible in the tree.
 pub fn scan(
     target: ScanTarget,
@@ -144,6 +151,8 @@ pub fn scan_with_options(
 ) -> Result<ScanResult, ScanError> {
     let started_at = Instant::now();
 
+    refuse_cloud_virtual_target(&target)?;
+
     let tree = match method {
         ScanMethod::FolderWalk => {
             scan_folder_with_walk(target.path(), progress_reporter, cancellation)?
@@ -173,6 +182,39 @@ pub fn scan_with_options(
         totals,
     };
     Ok(ScanResult { tree, summary })
+}
+
+/// Refuses a target that lies on a cloud virtual volume such as Google Drive for desktop.
+/// [`scan`] checks this itself; callers may check earlier to report the problem right away.
+///
+/// A failed volume lookup is not an error here: the scan itself then reports why the target
+/// cannot be read.
+///
+/// # Errors
+///
+/// [`ScanError::CloudVirtualVolumeNotScanned`] when the target is on a cloud virtual volume.
+pub fn refuse_cloud_virtual_target(target: &ScanTarget) -> Result<(), ScanError> {
+    refuse_cloud_virtual_volume(target.path())
+}
+
+fn refuse_cloud_virtual_volume(target_path: &Path) -> Result<(), ScanError> {
+    match mount_point_and_kind_of_volume_holding(target_path) {
+        Ok((mount_point, kind)) => ensure_volume_kind_may_be_scanned(mount_point, kind),
+        Err(error) => {
+            tracing::debug!(path = %target_path.display(), %error, "volume kind unknown");
+            Ok(())
+        }
+    }
+}
+
+fn ensure_volume_kind_may_be_scanned(
+    mount_point: PathBuf,
+    kind: VolumeKind,
+) -> Result<(), ScanError> {
+    if kind.is_cloud_virtual() {
+        return Err(ScanError::CloudVirtualVolumeNotScanned { mount_point });
+    }
+    Ok(())
 }
 
 /// The MFT always covers the whole volume; for a folder target the volume is scanned and the
@@ -228,4 +270,45 @@ fn scan_with_master_file_table(
             path: target_path.clone(),
         })?;
     Ok(volume_tree.extract_subtree(folder_node, target_path))
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use super::*;
+    use crate::volume_kind::{VolumeClassificationFacts, classify_volume};
+    use crate::volumes::DriveType;
+
+    #[test]
+    fn refuses_a_google_drive_volume() {
+        let google_drive_kind = classify_volume(&VolumeClassificationFacts {
+            drive_type: DriveType::Fixed,
+            label: "Google Drive",
+            serial_number: 0x1983_1116,
+            dos_device_name: Some(r"\Device\Volume{f5ae2bcb-da01-3bf2-8935-408102040811}"),
+        });
+
+        let result = ensure_volume_kind_may_be_scanned(PathBuf::from(r"G:\"), google_drive_kind);
+
+        assert!(matches!(
+            result,
+            Err(ScanError::CloudVirtualVolumeNotScanned { mount_point }) if mount_point == Path::new(r"G:\")
+        ));
+    }
+
+    #[test]
+    fn allows_local_and_removable_volumes() {
+        assert!(
+            ensure_volume_kind_may_be_scanned(PathBuf::from(r"C:\"), VolumeKind::LocalDisk).is_ok()
+        );
+        assert!(
+            ensure_volume_kind_may_be_scanned(PathBuf::from(r"E:\"), VolumeKind::Removable).is_ok()
+        );
+    }
+
+    #[test]
+    fn the_temp_directory_is_not_refused() {
+        assert!(refuse_cloud_virtual_volume(&std::env::temp_dir()).is_ok());
+    }
 }

@@ -1,5 +1,6 @@
 //! Finds exact duplicates among personal files (photos, videos, music, documents and archives)
-//! in folders the user picks. Never touches system folders and never opens cloud placeholders.
+//! in folders the user picks. Never touches system folders, never opens cloud placeholders and
+//! refuses folders on cloud virtual drives such as Google Drive for desktop.
 //!
 //! Pipeline: collect candidates → group by size → quick check (xxh3 over the first and last
 //! 64 KiB) → full check (BLAKE3). Files on SSDs are hashed in parallel, files on hard disks one
@@ -11,6 +12,7 @@
 
 mod cancellation;
 mod candidate_collector;
+mod cloud_drive_guard;
 mod confirmed_group_counter;
 mod directory_entry;
 mod drive_kind;
@@ -49,6 +51,6 @@ pub use revalidation::{
 pub use search_progress::{DuplicateSearchProgress, DuplicateSearchStage};
 pub use search_settings::{
     DEFAULT_MINIMUM_FILE_SIZE_BYTES, DuplicateSearchSettings, SearchSettingsError,
-    ValidatedSearchSettings,
+    ValidatedSearchSettings, validate_search_folder,
 };
 pub use system_folder_guard::SystemFolderGuard;

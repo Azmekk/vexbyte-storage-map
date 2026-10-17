@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { useNavigationStore } from "@/app/useNavigationStore";
+import { BackendCommandError } from "@/lib/backend/BackendCommandError";
 import {
   discardScan,
   getScanSummary,
@@ -43,8 +44,25 @@ export async function startScanSession(target: ScanTarget, method: ScanMethod): 
     }
   } catch (error) {
     const targetTitle = describeScanTarget(target).title;
-    toast.error(`Could not scan ${targetTitle}`, { description: readableErrorMessage(error) });
+    const title = isCloudDriveRefusal(error)
+      ? "Cloud drives aren't scanned"
+      : `Could not scan ${targetTitle}`;
+    toast.error(title, { description: readableErrorMessage(error) });
   }
+}
+
+function isCloudDriveRefusal(error: unknown): boolean {
+  if (!(error instanceof BackendCommandError)) {
+    return false;
+  }
+
+  const commandError: unknown = error.commandError;
+  return (
+    typeof commandError === "object" &&
+    commandError !== null &&
+    "kind" in commandError &&
+    commandError.kind === "cloudVirtualVolumeNotScanned"
+  );
 }
 
 async function loadScanResult(scanId: ScanId): Promise<void> {

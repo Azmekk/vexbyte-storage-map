@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { getDefaultDuplicateFolders } from "@/lib/backend/duplicates";
+import { checkDuplicateSearchFolder, getDefaultDuplicateFolders } from "@/lib/backend/duplicates";
 import { pickFolder } from "@/lib/backend/folderPicker";
 import type { FileCategory } from "@/lib/backend/generated";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
 import { runDuplicateSearch } from "../search/duplicateSearchRunner";
 import { useDuplicateSearchStore } from "../search/useDuplicateSearchStore";
 import { buildDuplicateSearchSettings, describeSetupBlocker } from "./buildDuplicateSearchSettings";
+import { describeSetupRejection } from "./describeSetupRejection";
 import { toggleFileCategory } from "./fileCategoryOptions";
 import {
   addCustomFolderChoice,
@@ -26,7 +27,7 @@ export type UseDuplicateSetupResult = {
   minimumFileSizeBytes: number;
   /** Why the search can't start yet (checked locally), or `null`. */
   setupBlocker: string | null;
-  /** What the backend rejected last time, for example a system folder. */
+  /** What the backend rejected last time, for example a system folder or a cloud drive folder. */
   setupErrorMessage: string | null;
   isStarting: boolean;
   toggleFolder: (folderPath: string) => void;
@@ -101,15 +102,22 @@ export function useDuplicateSetup(): UseDuplicateSetupResult {
   );
 
   const addFolder = useCallback(() => {
-    pickFolder("Choose a folder to search for duplicates")
-      .then((pickedFolder) => {
-        if (pickedFolder !== null) {
-          setFolderChoices(addCustomFolderChoice(currentFolderChoices(), pickedFolder));
-        }
-      })
-      .catch((error: unknown) => {
-        useDuplicateSearchStore.getState().setSetupErrorMessage(readableErrorMessage(error));
-      });
+    const addCheckedFolder = async () => {
+      const pickedFolder = await pickFolder("Choose a folder to search for duplicates");
+      if (pickedFolder === null) {
+        return;
+      }
+
+      // Refuses system folders and folders on cloud drives before they join the list.
+      await checkDuplicateSearchFolder(pickedFolder);
+      useDuplicateSearchStore.getState().setSetupErrorMessage(null);
+      setFolderChoices(addCustomFolderChoice(currentFolderChoices(), pickedFolder));
+    };
+
+    addCheckedFolder().catch((error: unknown) => {
+      const message = describeSetupRejection(error) ?? readableErrorMessage(error);
+      useDuplicateSearchStore.getState().setSetupErrorMessage(message);
+    });
   }, [setFolderChoices, currentFolderChoices]);
 
   const retryLoadingFolders = useCallback(() => {

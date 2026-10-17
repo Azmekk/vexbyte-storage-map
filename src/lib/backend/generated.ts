@@ -63,6 +63,12 @@ export const commands = {
 	 */
 	getDefaultDuplicateFolders: () => typedError<SuggestedFolder[], DuplicateCommandError>(__TAURI_INVOKE("get_default_duplicate_folders")),
 	/**
+	 *  Checks one folder the user wants to add to the search, so the setup step can refuse a system
+	 *  folder or a folder on a cloud drive right away. Rejects with `invalidSettings` or
+	 *  `cloudVirtualFolderNotAllowed`.
+	 */
+	checkDuplicateSearchFolder: (folder: string) => typedError<null, DuplicateCommandError>(__TAURI_INVOKE("check_duplicate_search_folder", { folder })),
+	/**
 	 *  Checks `settings` and starts the search on a background thread; returns its id right away.
 	 * 
 	 *  Progress arrives on `progress`. When the search ends, the `DuplicateSearchFinished` event is
@@ -164,7 +170,7 @@ export type DriveKind =
 
 export type DriveType = "fixed" | "removable" | "network" | "optical" | "ram" | "unknown";
 
-export type DuplicateCommandError = { kind: "invalidSettings"; details: string } | { kind: "searchNotFound"; id: number } | { kind: "searchNotFinished"; id: number; status: DuplicateSearchStatus } | { kind: "groupNotFound"; groupId: number } | { kind: "fileNotInGroup"; groupId: number; path: string } | { kind: "fileNotInAnyGroup"; path: string } | { kind: "groupWouldHaveNoKeptFile"; groupId: number } | { kind: "recycleFailed"; details: string } | { kind: "searchStartFailed"; details: string } | { kind: "backgroundTaskFailed"; details: string };
+export type DuplicateCommandError = { kind: "invalidSettings"; details: string } | { kind: "cloudVirtualFolderNotAllowed"; folder: string } | { kind: "searchNotFound"; id: number } | { kind: "searchNotFinished"; id: number; status: DuplicateSearchStatus } | { kind: "groupNotFound"; groupId: number } | { kind: "fileNotInGroup"; groupId: number; path: string } | { kind: "fileNotInAnyGroup"; path: string } | { kind: "groupWouldHaveNoKeptFile"; groupId: number } | { kind: "recycleFailed"; details: string } | { kind: "searchStartFailed"; details: string } | { kind: "backgroundTaskFailed"; details: string };
 
 /**  One copy of a duplicated file. */
 export type DuplicateFile = {
@@ -465,10 +471,10 @@ export type RemovalSummary = {
 	freedAllocatedSize: number,
 };
 
-export type ScanCommandError = { kind: "scanNotFound"; scanId: number } | { kind: "fastScanRequiresElevation" } | { kind: "scanStartFailed"; details: string };
+export type ScanCommandError = { kind: "scanNotFound"; scanId: number } | { kind: "fastScanRequiresElevation" } | { kind: "cloudVirtualVolumeNotScanned"; mountPoint: string } | { kind: "scanStartFailed"; details: string };
 
 /**  Why a scan stopped without a result. */
-export type ScanFailure = { kind: "fastScanRequiresElevation" } | { kind: "fastScanUnsupported"; path: string } | { kind: "volumeLookupFailed"; path: string; details: string } | { kind: "folderNotFoundOnVolume"; path: string } | { kind: "folderWalkFailed"; details: string } | { kind: "masterFileTableScanFailed"; details: string } | { kind: "scanThreadFailed"; details: string };
+export type ScanFailure = { kind: "fastScanRequiresElevation" } | { kind: "fastScanUnsupported"; path: string } | { kind: "volumeLookupFailed"; path: string; details: string } | { kind: "folderNotFoundOnVolume"; path: string } | { kind: "cloudVirtualVolumeNotScanned"; mountPoint: string } | { kind: "folderWalkFailed"; details: string } | { kind: "masterFileTableScanFailed"; details: string } | { kind: "scanThreadFailed"; details: string };
 
 /**
  *  Emitted once per scan, after its result (or failure) is stored, so queries work as soon as
@@ -649,6 +655,14 @@ export type VisualizationNodeKind = "file" | "directory" |
 
 export type VolumeCommandError = { kind: "volumeListFailed"; details: string } | { kind: "backgroundTaskFailed"; details: string };
 
+/**  What a volume really is, which decides whether the app may scan it. */
+export type VolumeKind = "localDisk" | "removable" | "optical" | "network" | "ramDisk" | 
+/**
+ *  A virtual drive of a cloud or user-mode file system, such as Google Drive for desktop.
+ *  Reading it is slow and downloads files, so it is never scanned.
+ */
+"cloudVirtual" | "unknown";
+
 /**  A mounted volume with its space usage, as shown on the home screen. */
 export type VolumeSummary = {
 	/**  Where the volume is mounted, for example `C:\`. This identifies the volume. */
@@ -660,10 +674,12 @@ export type VolumeSummary = {
 	totalBytes: number,
 	freeBytes: number,
 	driveType: DriveType,
+	/**  What the volume really is. A [`VolumeKind::CloudVirtual`] volume is never scanned. */
+	kind: VolumeKind,
 	/**
 	 *  The file system allows a fast scan. On Windows that is an NTFS volume, read through its
 	 *  Master File Table, which additionally needs administrator rights; see
-	 *  [`crate::fast_scan_availability`].
+	 *  [`crate::fast_scan_availability`]. Always false for a cloud virtual volume.
 	 */
 	supportsFastScan: boolean,
 };

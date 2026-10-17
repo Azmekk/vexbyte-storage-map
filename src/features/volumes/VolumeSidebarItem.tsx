@@ -1,3 +1,4 @@
+import { CloudIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { DriveTypeIcon } from "./DriveTypeIcon";
@@ -13,10 +14,20 @@ export function VolumeSidebarItem({ volume, onSelect }: VolumeSidebarItemProps) 
     <SidebarMenuItem>
       <SidebarMenuButton
         className="h-auto py-2"
-        onClick={onSelect}
+        onClick={volume.isCloudDrive ? undefined : onSelect}
+        disabled={volume.isCloudDrive}
+        aria-label={
+          volume.isCloudDrive
+            ? `${volume.displayName} (${volume.driveLabel}), cloud drive, not scanned`
+            : undefined
+        }
         tooltip={`${volume.displayName} (${volume.driveLabel}) · ${volume.freeSizeText} free`}
       >
-        <DriveTypeIcon driveType={volume.driveType} />
+        {volume.isCloudDrive ? (
+          <CloudIcon aria-hidden />
+        ) : (
+          <DriveTypeIcon driveType={volume.driveType} />
+        )}
         <div className="grid min-w-0 flex-1 gap-1.5">
           <div className="flex items-baseline justify-between gap-2">
             <span className="truncate">

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { VolumeSummary } from "@/lib/backend/volumes";
+import { describeVolume } from "./describeVolume";
 import { volumeDisplayName, volumeDriveLabel } from "./volumeDisplayName";
 import { calculateVolumeUsage, createVolumeUsageChartSegments } from "./volumeUsage";
 
@@ -11,10 +12,26 @@ function createVolume(overrides: Partial<VolumeSummary> = {}): VolumeSummary {
     totalBytes: 1000,
     freeBytes: 250,
     driveType: "fixed",
+    kind: "localDisk",
     supportsFastScan: true,
     ...overrides,
   };
 }
+
+describe("describeVolume", () => {
+  it("marks cloud virtual volumes as cloud drives", () => {
+    const googleDrive = createVolume({
+      mountPoint: "G:\\",
+      label: "Google Drive",
+      fileSystemName: "FAT32",
+      kind: "cloudVirtual",
+      supportsFastScan: false,
+    });
+
+    expect(describeVolume(googleDrive).isCloudDrive).toBe(true);
+    expect(describeVolume(createVolume()).isCloudDrive).toBe(false);
+  });
+});
 
 describe("calculateVolumeUsage", () => {
   it("derives used bytes and percentage", () => {

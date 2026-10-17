@@ -1,6 +1,6 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use disk_scanner::{ScanMethod, ScanProgressUpdate, ScanTarget};
+use disk_scanner::{ScanError, ScanMethod, ScanProgressUpdate, ScanTarget};
 use serde::Serialize;
 use specta::Type;
 use tauri::ipc::Channel;
@@ -24,6 +24,8 @@ pub enum ScanCommandError {
     ScanNotFound { scan_id: u32 },
     #[error("the fast scan needs administrator rights")]
     FastScanRequiresElevation,
+    #[error("{mount_point} is a streamed cloud drive and is not scanned")]
+    CloudVirtualVolumeNotScanned { mount_point: String },
     #[error("the scan could not be started: {details}")]
     ScanStartFailed { details: String },
 }
@@ -55,6 +57,8 @@ pub async fn start_scan(
     if method == ScanMethod::MasterFileTable && !is_process_elevated() {
         return Err(ScanCommandError::FastScanRequiresElevation);
     }
+
+    refuse_cloud_virtual_target(target.clone()).await?;
 
     let (scan_id, cancellation) = state.scans.register_running_scan(target.clone(), method);
 
@@ -90,6 +94,30 @@ pub async fn start_scan(
     }
 
     Ok(scan_id)
+}
+
+/// Walking a cloud drive such as Google Drive for desktop downloads files, so it is refused
+/// before a scan is registered. The scan checks this again itself.
+async fn refuse_cloud_virtual_target(target: ScanTarget) -> Result<(), ScanCommandError> {
+    let check_result = tauri::async_runtime::spawn_blocking(move || {
+        disk_scanner::refuse_cloud_virtual_target(&target)
+    })
+    .await
+    .map_err(|error| ScanCommandError::ScanStartFailed {
+        details: error.to_string(),
+    })?;
+
+    match check_result {
+        Ok(()) => Ok(()),
+        Err(ScanError::CloudVirtualVolumeNotScanned { mount_point }) => {
+            Err(ScanCommandError::CloudVirtualVolumeNotScanned {
+                mount_point: mount_point.display().to_string(),
+            })
+        }
+        Err(other) => Err(ScanCommandError::ScanStartFailed {
+            details: other.to_string(),
+        }),
+    }
 }
 
 fn emit_scan_finished(app: &AppHandle, scan_id: ScanId, outcome: ScanOutcome) {

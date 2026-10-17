@@ -6,6 +6,7 @@ use file_categories::{FileCategory, extensions_for};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use crate::cloud_drive_guard::is_on_cloud_virtual_volume;
 use crate::directory_entry::EntryKind;
 use crate::platform::{is_same_or_inside_folder, normalize_folder_path, read_file_stamp};
 use crate::system_folder_guard::SystemFolderGuard;
@@ -40,10 +41,15 @@ pub enum SearchSettingsError {
     NotAFolder { folder: PathBuf },
     #[error("{} is a system or application folder and cannot be searched", folder.display())]
     SystemFolderNotAllowed { folder: PathBuf },
+    #[error(
+        "{} is on a streamed cloud drive and cannot be searched, so nothing gets downloaded",
+        folder.display()
+    )]
+    CloudVirtualFolderNotAllowed { folder: PathBuf },
 }
 
-/// Settings that passed validation: folders exist, are absolute, contain no system folder and do
-/// not overlap, and the selected categories are expanded to extensions.
+/// Settings that passed validation: folders exist, are absolute, contain no system folder, are not
+/// on a cloud virtual drive and do not overlap, and the selected categories are expanded to extensions.
 #[derive(Debug, Clone)]
 pub struct ValidatedSearchSettings {
     pub(crate) folders: Vec<PathBuf>,
@@ -111,6 +117,18 @@ impl DuplicateSearchSettings {
     }
 }
 
+/// Checks one folder the user wants to add to a search against this computer's system folders
+/// and cloud drives, so the setup step can refuse it right away. Returns the normalized folder.
+///
+/// # Errors
+///
+/// [`SearchSettingsError::FolderNotFound`], [`SearchSettingsError::NotAFolder`],
+/// [`SearchSettingsError::SystemFolderNotAllowed`] or
+/// [`SearchSettingsError::CloudVirtualFolderNotAllowed`].
+pub fn validate_search_folder(folder: &Path) -> Result<PathBuf, SearchSettingsError> {
+    validate_folder(folder, &SystemFolderGuard::for_this_computer())
+}
+
 fn validate_folder(
     folder: &Path,
     system_folder_guard: &SystemFolderGuard,
@@ -144,10 +162,20 @@ fn validate_folder(
     let link_target = std::fs::canonicalize(&normalized_folder)
         .ok()
         .and_then(|canonical_folder| normalize_folder_path(&canonical_folder).ok());
-    if let Some(link_target) = link_target
-        && system_folder_guard.is_system_path(&link_target)
+    if let Some(link_target) = &link_target
+        && system_folder_guard.is_system_path(link_target)
     {
         return Err(system_folder_error());
+    }
+
+    let is_on_cloud_drive = is_on_cloud_virtual_volume(&normalized_folder)
+        || link_target
+            .as_deref()
+            .is_some_and(is_on_cloud_virtual_volume);
+    if is_on_cloud_drive {
+        return Err(SearchSettingsError::CloudVirtualFolderNotAllowed {
+            folder: folder.to_path_buf(),
+        });
     }
 
     Ok(normalized_folder)

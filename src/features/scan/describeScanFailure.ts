@@ -33,6 +33,12 @@ export function describeScanFailure(failure: ScanFailure): ScanFailureDescriptio
         explanation: `${failure.path} no longer exists, or it moved while the scan ran.`,
         suggestsStandardScan: false,
       };
+    case "cloudVirtualVolumeNotScanned":
+      return {
+        title: "Cloud drives aren't scanned",
+        explanation: `${failure.mountPoint} is a streamed cloud drive. Scanning it would download its files.`,
+        suggestsStandardScan: false,
+      };
     case "folderWalkFailed":
       return {
         title: "The scan stopped early",

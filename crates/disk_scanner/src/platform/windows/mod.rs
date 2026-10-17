@@ -3,6 +3,7 @@
 
 mod directory_listing;
 mod disk_space;
+mod dos_device_name;
 mod drive_type;
 mod file_attributes;
 mod file_time;

@@ -4,7 +4,7 @@ use std::sync::{Arc, PoisonError};
 
 use duplicate_finder::{
     ChangedFile, DuplicateGroup, DuplicateGroupId, DuplicateSearchProgress,
-    DuplicateSearchSettings, KeepRule, RemovalPlanError, SuggestedFolder,
+    DuplicateSearchSettings, KeepRule, RemovalPlanError, SearchSettingsError, SuggestedFolder,
 };
 use file_actions::RecycleFailure;
 use serde::Serialize;
@@ -33,6 +33,8 @@ use crate::events::DuplicateSearchFinished;
 pub enum DuplicateCommandError {
     #[error("the duplicate search settings are not valid: {details}")]
     InvalidSettings { details: String },
+    #[error("{folder} is on a streamed cloud drive and cannot be searched")]
+    CloudVirtualFolderNotAllowed { folder: String },
     #[error("there is no duplicate search {id}")]
     SearchNotFound { id: u32 },
     #[error("duplicate search {id} has no result ({status:?})")]
@@ -68,6 +70,21 @@ impl From<DuplicateSearchLookupError> for DuplicateCommandError {
                     status,
                 }
             }
+        }
+    }
+}
+
+impl From<SearchSettingsError> for DuplicateCommandError {
+    fn from(error: SearchSettingsError) -> Self {
+        match error {
+            SearchSettingsError::CloudVirtualFolderNotAllowed { folder } => {
+                Self::CloudVirtualFolderNotAllowed {
+                    folder: folder.display().to_string(),
+                }
+            }
+            other => Self::InvalidSettings {
+                details: describe_error_with_sources(&other),
+            },
         }
     }
 }
@@ -138,6 +155,17 @@ pub async fn get_default_duplicate_folders() -> Result<Vec<SuggestedFolder>, Dup
     Ok(folders)
 }
 
+/// Checks one folder the user wants to add to the search, so the setup step can refuse a system
+/// folder or a folder on a cloud drive right away. Rejects with `invalidSettings` or
+/// `cloudVirtualFolderNotAllowed`.
+#[tauri::command]
+#[specta::specta]
+pub async fn check_duplicate_search_folder(folder: PathBuf) -> Result<(), DuplicateCommandError> {
+    tauri::async_runtime::spawn_blocking(move || duplicate_finder::validate_search_folder(&folder))
+        .await??;
+    Ok(())
+}
+
 /// Checks `settings` and starts the search on a background thread; returns its id right away.
 ///
 /// Progress arrives on `progress`. When the search ends, the `DuplicateSearchFinished` event is
@@ -150,11 +178,8 @@ pub async fn start_duplicate_search(
     settings: DuplicateSearchSettings,
     progress: Channel<DuplicateSearchProgress>,
 ) -> Result<DuplicateSearchId, DuplicateCommandError> {
-    let validated_settings = tauri::async_runtime::spawn_blocking(move || settings.validate())
-        .await?
-        .map_err(|error| DuplicateCommandError::InvalidSettings {
-            details: describe_error_with_sources(&error),
-        })?;
+    let validated_settings =
+        tauri::async_runtime::spawn_blocking(move || settings.validate()).await??;
 
     let (id, cancellation) = state.duplicate_searches.register_running_search();
 

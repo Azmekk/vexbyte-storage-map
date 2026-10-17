@@ -52,6 +52,7 @@ pub enum ScanFailure {
     FastScanUnsupported { path: String },
     VolumeLookupFailed { path: String, details: String },
     FolderNotFoundOnVolume { path: String },
+    CloudVirtualVolumeNotScanned { mount_point: String },
     FolderWalkFailed { details: String },
     MasterFileTableScanFailed { details: String },
     ScanThreadFailed { details: String },
@@ -73,6 +74,11 @@ impl ScanFailure {
             ScanError::FolderNotFoundOnVolume { path } => Self::FolderNotFoundOnVolume {
                 path: path.display().to_string(),
             },
+            ScanError::CloudVirtualVolumeNotScanned { mount_point } => {
+                Self::CloudVirtualVolumeNotScanned {
+                    mount_point: mount_point.display().to_string(),
+                }
+            }
             ScanError::FolderWalkFailed(_) => Self::FolderWalkFailed {
                 details: describe_error_with_sources(error),
             },

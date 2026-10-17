@@ -1,7 +1,7 @@
 import { commands, type VolumeCommandError, type VolumeSummary } from "./generated";
 import { unwrapCommandResult } from "./unwrapCommandResult";
 
-export type { DriveType, VolumeCommandError, VolumeSummary } from "./generated";
+export type { DriveType, VolumeCommandError, VolumeKind, VolumeSummary } from "./generated";
 
 function describeVolumeCommandError(commandError: VolumeCommandError): string {
   switch (commandError.kind) {
