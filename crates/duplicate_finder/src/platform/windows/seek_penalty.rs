@@ -140,6 +140,15 @@ mod tests {
 
         let incurs_seek_penalty = query_volume_incurs_seek_penalty(&mount_point);
 
-        assert!(incurs_seek_penalty.is_ok(), "{incurs_seek_penalty:?}");
+        // Virtual disks (for example on hosted CI runners) refuse the storage property query
+        // with ERROR_GEN_FAILURE (31). The caller treats any error as an unknown drive kind, so
+        // only a crash would be a failure here.
+        match incurs_seek_penalty {
+            Ok(_) => {}
+            Err(error) if error.raw_os_error() == Some(31) => {
+                eprintln!("seek penalty query unsupported on this disk: {error}");
+            }
+            Err(error) => panic!("unexpected seek penalty error: {error:?}"),
+        }
     }
 }
