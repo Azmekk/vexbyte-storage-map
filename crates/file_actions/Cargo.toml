@@ -1,0 +1,13 @@
+[package]
+name = "file_actions"
+description = "Shell file actions on Windows: Recycle Bin, reveal in Explorer and thumbnails."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true
