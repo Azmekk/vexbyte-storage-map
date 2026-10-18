@@ -1,0 +1,8 @@
+{
+  // Must match the project name in the Cloudflare dashboard.
+  "name": "vexbyte-storage-map",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
