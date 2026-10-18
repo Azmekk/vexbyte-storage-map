@@ -227,3 +227,22 @@
   color: var(--text);
   font-weight: 500;
 }
+
+.linux-alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.linux-package {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.linux-package small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-soft);
+}

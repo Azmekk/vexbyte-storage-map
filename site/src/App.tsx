@@ -7,24 +7,24 @@ import { Nav } from "./components/Nav";
 import { Showcase } from "./components/Showcase";
 import { ViewTabs } from "./components/ViewTabs";
 import { useDownloadTarget } from "./hooks/useDownloadTarget";
+import type { StartedDownload } from "./lib/release/startedDownload";
 
 export function App() {
   const downloadTarget = useDownloadTarget();
-  const [hasStartedDownload, setHasStartedDownload] = useState(false);
-  const onDownloadStarted = () => setHasStartedDownload(true);
+  const [startedDownload, setStartedDownload] = useState<StartedDownload | null>(null);
 
   return (
     <>
       <Nav />
       <main id="top">
-        <Hero downloadTarget={downloadTarget} onDownloadStarted={onDownloadStarted} />
+        <Hero downloadTarget={downloadTarget} onDownloadStarted={setStartedDownload} />
         <Showcase release={downloadTarget.release} />
         <ViewTabs />
         <FeatureGrid />
         <Closing
           downloadTarget={downloadTarget}
-          onDownloadStarted={onDownloadStarted}
-          showSmartScreenNote={hasStartedDownload}
+          onDownloadStarted={setStartedDownload}
+          startedDownload={startedDownload}
         />
       </main>
       <Footer />

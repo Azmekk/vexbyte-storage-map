@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { fallbackRelease, fetchLatestRelease, type Release } from "../lib/release/latestRelease";
-import { detectPlatform, type Platform } from "../lib/release/platform";
+import { detectPlatform, type Platform, preferredLinuxPackageKind } from "../lib/release/platform";
+import type { LinuxPackageKind } from "../lib/release/repository";
 
 export type DownloadTarget = {
   platform: Platform;
   release: Release;
+  preferredLinuxPackage: LinuxPackageKind;
 };
 
 export function useDownloadTarget(): DownloadTarget {
   const [target, setTarget] = useState<DownloadTarget>(() => ({
     platform: "unknown",
     release: fallbackRelease(),
+    preferredLinuxPackage: preferredLinuxPackageKind(navigator.userAgent),
   }));
 
   useEffect(() => {
@@ -19,7 +22,7 @@ export function useDownloadTarget(): DownloadTarget {
       if (!isCurrent) return;
       setTarget((current) => ({ ...current, platform }));
       const release = await fetchLatestRelease();
-      if (isCurrent) setTarget({ platform, release });
+      if (isCurrent) setTarget((current) => ({ ...current, platform, release }));
     });
     return () => {
       isCurrent = false;

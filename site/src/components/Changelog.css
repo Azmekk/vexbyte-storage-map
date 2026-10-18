@@ -1,0 +1,115 @@
+.changelog {
+  max-width: 760px;
+  padding-block: clamp(48px, 8vw, 96px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.changelog h1 {
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.changelog .lede a {
+  color: var(--text);
+}
+
+.changelog-entry {
+  margin-top: 28px;
+  padding: 24px clamp(18px, 3vw, 28px);
+  border-radius: 20px;
+  border: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+  scroll-margin-top: 80px;
+}
+
+.changelog-entry:target {
+  border-color: var(--ink-line-strong);
+  box-shadow: 0 20px 60px -30px rgba(109, 139, 255, 0.55);
+}
+
+.changelog-entry-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  margin-bottom: 16px;
+}
+
+.changelog-entry-header h2 {
+  font-size: clamp(28px, 4vw, 38px);
+}
+
+.changelog-version-link {
+  text-decoration: none;
+}
+
+.changelog-entry-header time {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.changelog-release-link {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-soft);
+  text-decoration: none;
+  border-bottom: 1px solid var(--ink-line-strong);
+}
+
+.changelog-release-link:hover {
+  color: var(--text);
+}
+
+.changelog-entry h3 {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.changelog-entry ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.changelog-whats-new {
+  font-size: 17px;
+}
+
+.changelog-entry code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--glass);
+  border: 1px solid var(--ink-line);
+}
+
+.changelog-developer {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ink-line);
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+.changelog-developer summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.changelog-developer summary:focus-visible {
+  outline: 2px solid var(--glow);
+  outline-offset: 4px;
+  border-radius: 4px;
+}

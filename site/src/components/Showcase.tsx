@@ -41,16 +41,16 @@ export function Showcase({ release }: { release: Release }) {
         </motion.figure>
         <p className="window-caption">Example scan of a Program Files folder.</p>
         <ul className="stats">
-          {release.sizeInBytes !== null && (
+          {release.windowsInstaller.sizeInBytes !== null && (
             <li className="stat">
               <b>
                 <CountUp
-                  value={release.sizeInBytes / BYTES_PER_MEGABYTE}
+                  value={release.windowsInstaller.sizeInBytes / BYTES_PER_MEGABYTE}
                   decimals={1}
                   suffix=" MB"
                 />
               </b>
-              <small>installer download</small>
+              <small>Windows installer download</small>
             </li>
           )}
           <li className="stat">

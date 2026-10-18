@@ -1,17 +1,19 @@
 import "./Closing.css";
 import { motion } from "motion/react";
 import type { DownloadTarget } from "../hooks/useDownloadTarget";
+import type { StartedDownload } from "../lib/release/startedDownload";
 import { DownloadBlock } from "./DownloadBlock";
+import { LinuxInstallNote } from "./LinuxInstallNote";
 import { OrbitCanvas } from "./OrbitCanvas";
 import { SmartScreenNote } from "./SmartScreenNote";
 
 type ClosingProps = {
   downloadTarget: DownloadTarget;
-  onDownloadStarted: () => void;
-  showSmartScreenNote: boolean;
+  onDownloadStarted: (download: StartedDownload) => void;
+  startedDownload: StartedDownload | null;
 };
 
-export function Closing({ downloadTarget, onDownloadStarted, showSmartScreenNote }: ClosingProps) {
+export function Closing({ downloadTarget, onDownloadStarted, startedDownload }: ClosingProps) {
   return (
     <section className="closing" id="get">
       <OrbitCanvas className="closing-orbit" scale={0.95} alpha={0.8} />
@@ -26,11 +28,14 @@ export function Closing({ downloadTarget, onDownloadStarted, showSmartScreenNote
           Find out where it all went.
         </motion.h2>
         <p className="lede">
-          Windows 10 and 11 today, macOS and Linux coming soon. Installs for your user only, no
-          admin needed.
+          Windows and Linux today, macOS coming soon. No admin needed to use it, and on Windows it
+          installs for your user only.
         </p>
         <DownloadBlock downloadTarget={downloadTarget} onDownloadStarted={onDownloadStarted} />
-        <SmartScreenNote isVisible={showSmartScreenNote} />
+        <SmartScreenNote isVisible={startedDownload?.platform === "windows"} />
+        <LinuxInstallNote
+          linuxPackage={startedDownload?.platform === "linux" ? startedDownload.linuxPackage : null}
+        />
       </div>
     </section>
   );

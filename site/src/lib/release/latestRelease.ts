@@ -1,9 +1,27 @@
-import { installerFileName, installerUrlForVersion, LATEST_RELEASE_API_URL } from "./repository";
+import {
+  assetUrl,
+  installerFileName,
+  LATEST_RELEASE_API_URL,
+  LINUX_PACKAGE_SUFFIXES,
+  type LinuxPackageKind,
+  WINDOWS_INSTALLER_SUFFIX,
+} from "./repository";
+
+export type ReleaseAsset = {
+  fileName: string;
+  url: string;
+  sizeInBytes: number | null;
+};
+
+export type LinuxPackage = ReleaseAsset & {
+  kind: LinuxPackageKind;
+};
 
 export type Release = {
   version: string;
-  installerUrl: string;
-  sizeInBytes: number | null;
+  windowsInstaller: ReleaseAsset;
+  /** Empty when the release has no Linux builds, or when GitHub couldn't be reached. */
+  linuxPackages: LinuxPackage[];
 };
 
 export type GitHubAsset = {
@@ -19,23 +37,40 @@ export type GitHubRelease = {
 
 const CACHE_KEY = "vsm-latest-release";
 const REQUEST_TIMEOUT_MILLISECONDS = 4000;
+const LINUX_PACKAGE_ORDER: LinuxPackageKind[] = ["deb", "rpm", "appimage"];
+
+function constructedWindowsInstaller(version: string): ReleaseAsset {
+  const fileName = installerFileName(version);
+  return { fileName, url: assetUrl(version, fileName), sizeInBytes: null };
+}
 
 export function fallbackRelease(version: string = __APP_VERSION__): Release {
   return {
     version,
-    installerUrl: installerUrlForVersion(version),
-    sizeInBytes: null,
+    windowsInstaller: constructedWindowsInstaller(version),
+    linuxPackages: [],
   };
 }
 
-/** Builds the direct installer link for the latest tag; the asset list only supplies its size. */
+function findAsset(version: string, assets: GitHubAsset[], suffix: string): ReleaseAsset | null {
+  const asset = assets.find((candidate) => candidate.name.endsWith(suffix));
+  if (!asset) return null;
+  return { fileName: asset.name, url: assetUrl(version, asset.name), sizeInBytes: asset.size };
+}
+
+/** Picks each platform's file from the release assets by suffix. */
 export function releaseFromGitHub(release: GitHubRelease): Release {
   const version = release.tag_name.replace(/^v/, "");
-  const asset = release.assets.find((candidate) => candidate.name === installerFileName(version));
+  const linuxPackages = LINUX_PACKAGE_ORDER.flatMap((kind): LinuxPackage[] => {
+    const asset = findAsset(version, release.assets, LINUX_PACKAGE_SUFFIXES[kind]);
+    return asset ? [{ ...asset, kind }] : [];
+  });
   return {
     version,
-    installerUrl: installerUrlForVersion(version),
-    sizeInBytes: asset?.size ?? null,
+    windowsInstaller:
+      findAsset(version, release.assets, WINDOWS_INSTALLER_SUFFIX) ??
+      constructedWindowsInstaller(version),
+    linuxPackages,
   };
 }
 

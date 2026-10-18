@@ -4,8 +4,11 @@ export type Platform =
   | "windows-32"
   | "mac"
   | "linux"
+  | "linux-arm64"
   | "mobile"
   | "unknown";
+
+import type { LinuxPackageKind } from "./repository";
 
 export type PlatformHints = {
   platform?: string;
@@ -26,8 +29,8 @@ export function unsupportedPlatformName(platform: Platform): string | null {
       return "phones and tablets";
     case "mac":
       return "macOS";
-    case "linux":
-      return "Linux";
+    case "linux-arm64":
+      return "ARM Linux";
     case "windows-32":
       return "32-bit Windows";
     default:
@@ -37,7 +40,18 @@ export function unsupportedPlatformName(platform: Platform): string | null {
 
 /** Platforms that get their own build later, so the page says "Coming soon" instead. */
 export function isComingSoonPlatform(platform: Platform): boolean {
-  return platform === "mac" || platform === "linux";
+  return platform === "mac";
+}
+
+/** The Linux package to highlight; distributions rarely name themselves in the user agent. */
+export function preferredLinuxPackageKind(userAgent: string): LinuxPackageKind {
+  if (/Ubuntu|Debian|Mint/i.test(userAgent)) return "deb";
+  if (/Fedora|Red Hat/i.test(userAgent)) return "rpm";
+  return "appimage";
+}
+
+function isArmArchitecture(text: string): boolean {
+  return /aarch64|arm64|armv\d/i.test(text);
 }
 
 export function classifyPlatform(userAgent: string, hints?: PlatformHints): Platform {
@@ -52,7 +66,7 @@ export function classifyPlatform(userAgent: string, hints?: PlatformHints): Plat
         return "mac";
       case "Linux":
       case "Chrome OS":
-        return "linux";
+        return hints.architecture === "arm" ? "linux-arm64" : "linux";
       case "Android":
         return "mobile";
     }
@@ -65,7 +79,7 @@ export function classifyPlatform(userAgent: string, hints?: PlatformHints): Plat
   }
   // iPadOS reports itself as a Mac.
   if (/Macintosh|Mac OS X/i.test(userAgent)) return "mac";
-  if (/Linux|CrOS/i.test(userAgent)) return "linux";
+  if (/Linux|CrOS/i.test(userAgent)) return isArmArchitecture(userAgent) ? "linux-arm64" : "linux";
   return "unknown";
 }
 

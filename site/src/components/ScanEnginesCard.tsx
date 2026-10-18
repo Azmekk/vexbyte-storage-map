@@ -7,9 +7,9 @@ export function ScanEnginesCard({ order }: { order: number }) {
       <span className="eyebrow">Two ways to scan</span>
       <h3 className="card-headline">Fast on any drive. Even faster as admin.</h3>
       <p>
-        Standard scan works on any drive or folder, with no admin rights. Run the app as
-        administrator and Fast scan reads your Windows drive's own file index directly, which is
-        many times quicker on big drives.
+        Standard scan works on any drive or folder, with no admin rights, on Windows and Linux. On
+        Windows only, run the app as administrator and Fast scan reads the drive's own file index
+        directly, which is many times quicker on big drives.
       </p>
       <div className="engines">
         <div className="engine" style={{ "--engine-color": "var(--video)" } as CSSProperties}>
@@ -18,7 +18,7 @@ export function ScanEnginesCard({ order }: { order: number }) {
         </div>
         <div className="engine" style={{ "--engine-color": "var(--archive)" } as CSSProperties}>
           <b>Fast scan</b>
-          <span>Windows drives · run as admin</span>
+          <span>Windows only · NTFS drives · run as admin</span>
         </div>
       </div>
     </SpotlightCard>

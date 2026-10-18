@@ -2,12 +2,13 @@ import "./Hero.css";
 import { motion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
 import type { DownloadTarget } from "../hooks/useDownloadTarget";
+import type { StartedDownload } from "../lib/release/startedDownload";
 import { DownloadBlock } from "./DownloadBlock";
 import { OrbitCanvas } from "./OrbitCanvas";
 
 type HeroProps = {
   downloadTarget: DownloadTarget;
-  onDownloadStarted: () => void;
+  onDownloadStarted: (download: StartedDownload) => void;
 };
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
