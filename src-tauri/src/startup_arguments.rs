@@ -69,31 +69,35 @@ mod tests {
 
     use super::*;
 
-    fn volume_target(mount_point: &str) -> ScanTarget {
-        ScanTarget::Volume {
-            mount_point: PathBuf::from(mount_point),
-        }
+    fn root(drive_letter: char) -> PathBuf {
+        crate::platform::example_volume_root(drive_letter)
+    }
+
+    fn volume_target(mount_point: PathBuf) -> ScanTarget {
+        ScanTarget::Volume { mount_point }
     }
 
     #[test]
     fn reads_a_volume_request() {
-        let request = parse_startup_scan_request(["--scan-volume", r"C:\"]).unwrap();
+        let request =
+            parse_startup_scan_request([OsStr::new("--scan-volume"), root('C').as_os_str()])
+                .unwrap();
 
-        assert_eq!(request.target, volume_target(r"C:\"));
+        assert_eq!(request.target, volume_target(root('C')));
         assert_eq!(request.method, ScanMethod::MasterFileTable);
     }
 
     #[test]
     fn reads_a_folder_request_among_other_arguments() {
-        let request =
-            parse_startup_scan_request(["--unknown", "--scan-folder", r"D:\My Photos"]).unwrap();
+        let folder = root('D').join("My Photos");
+        let request = parse_startup_scan_request([
+            OsStr::new("--unknown"),
+            OsStr::new("--scan-folder"),
+            folder.as_os_str(),
+        ])
+        .unwrap();
 
-        assert_eq!(
-            request.target,
-            ScanTarget::Folder {
-                path: PathBuf::from(r"D:\My Photos")
-            }
-        );
+        assert_eq!(request.target, ScanTarget::Folder { path: folder });
     }
 
     #[test]
@@ -105,18 +109,25 @@ mod tests {
 
     #[test]
     fn the_last_request_wins() {
-        let request =
-            parse_startup_scan_request(["--scan-volume", r"C:\", "--scan-volume", r"E:\"]).unwrap();
+        let request = parse_startup_scan_request([
+            OsStr::new("--scan-volume"),
+            root('C').as_os_str(),
+            OsStr::new("--scan-volume"),
+            root('E').as_os_str(),
+        ])
+        .unwrap();
 
-        assert_eq!(request.target, volume_target(r"E:\"));
+        assert_eq!(request.target, volume_target(root('E')));
     }
 
     #[test]
     fn round_trips_through_the_relaunch_arguments() {
+        let mut folder_with_trailing_separator = root('D').join("Some Folder").into_os_string();
+        folder_with_trailing_separator.push(std::path::MAIN_SEPARATOR_STR);
         let targets = [
-            volume_target(r"C:\"),
+            volume_target(root('C')),
             ScanTarget::Folder {
-                path: PathBuf::from(r"D:\Some Folder\"),
+                path: PathBuf::from(folder_with_trailing_separator),
             },
         ];
 

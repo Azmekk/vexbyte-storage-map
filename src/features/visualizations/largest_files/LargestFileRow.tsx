@@ -11,6 +11,7 @@ import { FileTypeIcon } from "@/features/explorer/FileTypeIcon";
 import type { FileSummary } from "@/lib/backend/tree";
 import { cn } from "@/lib/classNames";
 import { formatBytesAsReadableSize } from "@/lib/formatting/formatBytesAsReadableSize";
+import { platformWording } from "@/lib/platform/platformWording";
 
 type LargestFileRowProps = {
   file: FileSummary;
@@ -94,7 +95,7 @@ export function LargestFileRow({
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={`Show ${file.name} in File Explorer`}
+                  aria-label={`Show ${file.name} in ${platformWording().fileManagerName}`}
                   onClick={(event) => {
                     event.stopPropagation();
                     actions.revealItem(target);
@@ -111,7 +112,7 @@ export function LargestFileRow({
                   variant="ghost"
                   size="icon-sm"
                   className="text-destructive hover:text-destructive"
-                  aria-label={`Move ${file.name} to the Recycle Bin`}
+                  aria-label={`Move ${file.name} to the ${platformWording().binName}`}
                   onClick={(event) => {
                     event.stopPropagation();
                     actions.requestRecycle(target);

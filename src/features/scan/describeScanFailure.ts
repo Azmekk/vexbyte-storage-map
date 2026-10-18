@@ -1,4 +1,5 @@
 import type { ScanFailure } from "@/lib/backend/scans";
+import { platformWording } from "@/lib/platform/platformWording";
 
 export type ScanFailureDescription = {
   title: string;
@@ -24,7 +25,7 @@ export function describeScanFailure(failure: ScanFailure): ScanFailureDescriptio
     case "volumeLookupFailed":
       return {
         title: "The drive could not be read",
-        explanation: `Windows could not tell which drive ${failure.path} is on. ${failure.details}`,
+        explanation: `${platformWording().systemNameAtSentenceStart} could not tell which drive ${failure.path} is on. ${failure.details}`,
         suggestsStandardScan: true,
       };
     case "folderNotFoundOnVolume":

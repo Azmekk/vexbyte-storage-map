@@ -9,6 +9,7 @@ import type {
   DuplicateSearchId,
 } from "@/lib/backend/generated";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
+import { platformWording } from "@/lib/platform/platformWording";
 import { describeRecycleToast, hasSkippedFiles } from "./describeRecycleResult";
 import type { RecycleScope } from "./describeRecycleScope";
 import { groupIdsLeavingAfterMove } from "./groupPageCache";
@@ -97,7 +98,7 @@ function showRecycleToast(result: DuplicateRecycleResult): void {
 }
 
 function showRecycleErrorToast(error: unknown): void {
-  toast.error("Nothing was moved to the Recycle Bin", {
+  toast.error(`Nothing was moved to the ${platformWording().binName}`, {
     description: isGroupWouldHaveNoKeptFileError(error)
       ? "A group must keep at least one copy. Keep another copy, then try again."
       : readableErrorMessage(error),

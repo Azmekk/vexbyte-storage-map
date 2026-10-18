@@ -4,6 +4,7 @@ import { openWithDefaultApp, revealInExplorer } from "@/lib/backend/fileActions"
 import type { ScanId } from "@/lib/backend/scans";
 import { getNodeDetails, type NodeIndex } from "@/lib/backend/tree";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
+import { platformWording } from "@/lib/platform/platformWording";
 import { useExplorerSelectionStore } from "../useExplorerSelectionStore";
 import type { NodeActionTarget } from "./nodeActionTarget";
 import { useRecycleConfirmationStore } from "./useRecycleConfirmationStore";
@@ -43,8 +44,9 @@ export function useNodeActions(scanId: ScanId): NodeActions {
           openWithDefaultApp(scanId, target.node),
         ),
       revealItem: (target) =>
-        void runFileAction(`Could not show ${target.name} in File Explorer`, () =>
-          revealInExplorer(scanId, target.node),
+        void runFileAction(
+          `Could not show ${target.name} in ${platformWording().fileManagerName}`,
+          () => revealInExplorer(scanId, target.node),
         ),
       copyPath: (target) =>
         void runFileAction("Could not copy the path", async () => {

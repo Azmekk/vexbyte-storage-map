@@ -135,6 +135,15 @@ export const commands = {
 	revealSearchHit: (path: string) => typedError<null, SearchCommandError>(__TAURI_INVOKE("reveal_search_hit", { path })),
 	/**  Opens a search result with its default application, or a folder in Explorer. */
 	openSearchHit: (path: string) => typedError<null, SearchCommandError>(__TAURI_INVOKE("open_search_hit", { path })),
+	/**
+	 *  The operating system the app runs on, how it treats paths and the app version. The frontend
+	 *  reads it once before the first render.
+	 */
+	getPlatformInfo: () => __TAURI_INVOKE<PlatformInfo>("get_platform_info"),
+	/**  The newest release on GitHub when it is newer than this build, otherwise `null`. */
+	checkForUpdate: () => typedError<{
+	latestVersion: string,
+} | null, UpdateCommandError>(__TAURI_INVOKE("check_for_update")),
 };
 
 /** Events */
@@ -145,6 +154,10 @@ export const events = {
 };
 
 /* Types */
+export type AvailableUpdate = {
+	latestVersion: string,
+};
+
 export type BreadcrumbItem = {
 	node: NodeIndex,
 	name: string,
@@ -471,6 +484,8 @@ export type NodeKind = "file" | "directory";
  */
 export type OnlineOnlyVisibility = "hidden" | "shown";
 
+export type OperatingSystem = "windows" | "linux";
+
 /**  One word for the whole search engine, for the "Warming up search engine" screen. */
 export type OverallIndexStatus = 
 /**
@@ -484,6 +499,12 @@ export type OverallIndexStatus =
 "partiallyReady" | 
 /**  No volume can be searched: every build failed, or there is no local volume. */
 "failed";
+
+export type PlatformInfo = {
+	os: OperatingSystem,
+	pathsAreCaseSensitive: boolean,
+	appVersion: string,
+};
 
 export type RecycleFailure = {
 	path: string,
@@ -770,6 +791,8 @@ export type TreeTotals = {
 	linkCount: number,
 };
 
+export type UpdateCommandError = { kind: "checkFailed"; details: string } | { kind: "backgroundTaskFailed"; details: string };
+
 /**  A pruned, nested view of a subtree for the treemap and sunburst. */
 export type VisualizationNode = {
 	/**  `None` for merged "smaller items" blocks. */
@@ -829,9 +852,9 @@ export type VolumeSummary = {
 	/**  What the volume really is. A [`VolumeKind::CloudVirtual`] volume is never scanned. */
 	kind: VolumeKind,
 	/**
-	 *  The file system allows a fast scan. On Windows that is an NTFS volume, read through its
+	 *  The file system allows a fast scan. Only an NTFS volume on Windows does, read through its
 	 *  Master File Table, which additionally needs administrator rights; see
-	 *  [`crate::fast_scan_availability`]. Always false for a cloud virtual volume.
+	 *  [`crate::fast_scan_availability`]. Always false on Linux and for a cloud virtual volume.
 	 */
 	supportsFastScan: boolean,
 };

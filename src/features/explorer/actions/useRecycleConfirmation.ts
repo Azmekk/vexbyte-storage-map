@@ -4,6 +4,7 @@ import { useScanStore } from "@/features/scan/useScanStore";
 import { moveToRecycleBin } from "@/lib/backend/fileActions";
 import { getNodeDetails, type NodeDetails } from "@/lib/backend/tree";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
+import { platformWording } from "@/lib/platform/platformWording";
 import { scanQueryCache } from "@/lib/queryCache/scanQueryCache";
 import { useExplorerSelectionStore } from "../useExplorerSelectionStore";
 import { describeRecycleOutcome } from "./describeRecycleOutcome";
@@ -95,7 +96,7 @@ export function useRecycleConfirmation(): RecycleConfirmation {
         closeConfirmation();
       })
       .catch((error: unknown) => {
-        toast.error("Nothing was moved to the Recycle Bin", {
+        toast.error(`Nothing was moved to the ${platformWording().binName}`, {
           description: readableErrorMessage(error),
         });
       })

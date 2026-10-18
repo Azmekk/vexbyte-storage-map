@@ -1,5 +1,7 @@
 import type { NodeDetails } from "@/lib/backend/tree";
 import { formatCount } from "@/lib/formatting/formatCount";
+import { currentPlatform } from "@/lib/platform/currentPlatform";
+import { platformWording } from "@/lib/platform/platformWording";
 
 export type EmptyFolderDescription = {
   title: string;
@@ -15,10 +17,13 @@ export type EmptyFolderFacts = Pick<NodeDetails, "flags" | "onlineOnlyFileCount"
 /** Why the tree table has no rows to show for a folder, based on its details when they are known. */
 export function describeEmptyFolder(facts: EmptyFolderFacts | null): EmptyFolderDescription {
   if (facts?.flags.inaccessible) {
+    const protectedFolderText = "This folder is protected, so its contents are not counted.";
     return {
-      title: "Windows did not let the scan look inside",
+      title: `${platformWording().systemNameAtSentenceStart} did not let the scan look inside`,
       description:
-        "This folder is protected, so its contents are not counted. Scanning as administrator with the fast scan usually can read it.",
+        currentPlatform().os === "windows"
+          ? `${protectedFolderText} Scanning as administrator with the fast scan usually can read it.`
+          : protectedFolderText,
       isWarning: true,
       hasHiddenOnlineOnlyFiles: false,
     };

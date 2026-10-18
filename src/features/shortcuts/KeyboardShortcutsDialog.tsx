@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import { KEYBOARD_SHORTCUT_GROUPS } from "./keyboardShortcutList";
+import { keyboardShortcutGroups } from "./keyboardShortcutList";
 import { useKeyboardShortcutsDialogStore } from "./useKeyboardShortcutsDialogStore";
 
 export function KeyboardShortcutsDialog() {
@@ -22,7 +22,7 @@ export function KeyboardShortcutsDialog() {
           <DialogDescription>Get around without the mouse.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-5">
-          {KEYBOARD_SHORTCUT_GROUPS.map((group) => (
+          {keyboardShortcutGroups().map((group) => (
             <section key={group.title} className="grid gap-2">
               <h3 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
                 {group.title}

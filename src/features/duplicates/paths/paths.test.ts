@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { initializeCurrentPlatform, resetCurrentPlatform } from "@/lib/platform/currentPlatform";
 import { isPathInsideFolder, isSameFolder } from "./isPathInsideFolder";
 import { splitFilePath } from "./splitFilePath";
 import { truncatePathMiddle } from "./truncatePathMiddle";
@@ -44,5 +45,22 @@ describe("isPathInsideFolder", () => {
   it("compares folders ignoring separator style and trailing separators", () => {
     expect(isSameFolder("C:/Photos/", "c:\\photos")).toBe(true);
     expect(isSameFolder("C:\\Photos", "C:\\Photo")).toBe(false);
+  });
+});
+
+describe("isPathInsideFolder on Linux", () => {
+  afterEach(() => {
+    resetCurrentPlatform();
+  });
+
+  it("matches case-sensitively and treats / as the root of everything", () => {
+    initializeCurrentPlatform({ os: "linux", pathsAreCaseSensitive: true, appVersion: "0.2.0" });
+
+    expect(isPathInsideFolder("/home/ana/Photos/a.jpg", "/home/ana/Photos/")).toBe(true);
+    expect(isPathInsideFolder("/home/ana/Photos/a.jpg", "/home/ana/photos")).toBe(false);
+    expect(isPathInsideFolder("/home/ana/Photos Old/a.jpg", "/home/ana/Photos")).toBe(false);
+    expect(isPathInsideFolder("/home/ana/a.jpg", "/")).toBe(true);
+    expect(isSameFolder("/home/ana/", "/home/ana")).toBe(true);
+    expect(isSameFolder("/home/Ana", "/home/ana")).toBe(false);
   });
 });

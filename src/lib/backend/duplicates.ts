@@ -1,4 +1,5 @@
 import type { UnlistenFn } from "@tauri-apps/api/event";
+import { platformWording } from "@/lib/platform/platformWording";
 import {
   commands,
   type DuplicateCommandError,
@@ -66,7 +67,7 @@ function describeDuplicateCommandError(commandError: DuplicateCommandError): str
     case "groupWouldHaveNoKeptFile":
       return "Every group must keep at least one copy.";
     case "recycleFailed":
-      return `The Recycle Bin operation failed. ${commandError.details}`;
+      return `The move to the ${platformWording().binName} failed. ${commandError.details}`;
     case "searchStartFailed":
       return `The duplicate search could not be started. ${commandError.details}`;
     case "backgroundTaskFailed":

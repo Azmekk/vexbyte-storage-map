@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { openSearchHit, revealSearchHit, type SearchHit } from "@/lib/backend/search";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
+import { platformWording } from "@/lib/platform/platformWording";
 
 async function runHitAction(failureTitle: string, action: () => Promise<void>): Promise<void> {
   try {
@@ -17,7 +18,9 @@ export function openHit(hit: SearchHit): void {
 
 /** Opens File Explorer with the item selected. */
 export function revealHit(hit: SearchHit): void {
-  void runHitAction(`Could not show ${hit.name} in File Explorer`, () => revealSearchHit(hit.path));
+  void runHitAction(`Could not show ${hit.name} in ${platformWording().fileManagerName}`, () =>
+    revealSearchHit(hit.path),
+  );
 }
 
 export function copyHitPath(hit: SearchHit): void {

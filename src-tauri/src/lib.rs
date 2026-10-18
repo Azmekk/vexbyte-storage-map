@@ -12,11 +12,13 @@ mod elevation;
 mod error_details;
 mod events;
 mod platform;
+mod platform_info;
 mod scan_registry;
 mod search_index_builders;
 mod search_index_registry;
 mod startup_arguments;
 mod thumbnail_asset_scope;
+mod update_check;
 
 use app_state::AppState;
 use tauri::Manager;
@@ -42,6 +44,7 @@ pub fn run() -> Result<(), tauri::Error> {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(invoke_handler)
         .setup(move |app| {
             bindings_builder.mount_events(app);

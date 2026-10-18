@@ -1,7 +1,9 @@
+import { mountPointFallbackName } from "@/features/volumes/volumeDisplayName";
 import type { ScanMethod } from "@/lib/backend/scans";
 import { describeSkipReason, type VolumeIndexStatus } from "@/lib/backend/search";
 import type { VolumeKind } from "@/lib/backend/volumes";
 import { formatRelativeDate } from "@/lib/formatting/formatRelativeDate";
+import { currentPlatform } from "@/lib/platform/currentPlatform";
 
 export type VolumeIndexTone = "ready" | "busy" | "waiting" | "failed" | "skipped";
 
@@ -58,15 +60,24 @@ const FALLBACK_NAME_BY_VOLUME_KIND: Record<VolumeKind, string> = {
   unknown: "Drive",
 };
 
-/** `Windows (C:)`, or `Local Disk (C:)` for a drive without a label, as in the sidebar. */
+function fallbackVolumeName(volume: Pick<VolumeIndexStatus, "mountPoint" | "volumeKind">): string {
+  return currentPlatform().os === "windows"
+    ? FALLBACK_NAME_BY_VOLUME_KIND[volume.volumeKind]
+    : mountPointFallbackName(volume.mountPoint);
+}
+
+/**
+ * `Windows (C:)`, or `Local Disk (C:)` for a drive without a label, as in the sidebar. On Linux
+ * `USB (/media/martin/USB)`, or `File System (/)` for a root without a label.
+ */
 export function volumeIndexDisplayName(
   volume: Pick<VolumeIndexStatus, "label" | "mountPoint" | "volumeKind">,
 ): string {
-  const driveLetter = volume.mountPoint.replace(/[\\/]+$/, "");
+  const trimmedMountPoint = volume.mountPoint.replace(/[\\/]+$/, "");
+  const mountPointLabel = trimmedMountPoint.length > 0 ? trimmedMountPoint : volume.mountPoint;
   const trimmedLabel = volume.label.trim();
-  const name =
-    trimmedLabel.length > 0 ? trimmedLabel : FALLBACK_NAME_BY_VOLUME_KIND[volume.volumeKind];
-  return `${name} (${driveLetter})`;
+  const name = trimmedLabel.length > 0 ? trimmedLabel : fallbackVolumeName(volume);
+  return `${name} (${mountPointLabel})`;
 }
 
 /** The drives whose first index is still being read or waiting for a build slot. */

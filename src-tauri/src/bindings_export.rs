@@ -7,8 +7,8 @@ use tauri::Wry;
 use tauri_specta::{Builder, collect_commands, collect_events};
 
 use crate::commands::{
-    duplicate_commands, elevation_commands, file_action_commands, scan_commands, search_commands,
-    tree_commands, volume_commands,
+    duplicate_commands, elevation_commands, file_action_commands, platform_commands, scan_commands,
+    search_commands, tree_commands, update_commands, volume_commands,
 };
 use crate::events::{DuplicateSearchFinished, ScanFinished, SearchIndexStatusChanged};
 
@@ -62,6 +62,8 @@ pub fn create_bindings_builder() -> Builder<Wry> {
             search_commands::search_files,
             search_commands::reveal_search_hit,
             search_commands::open_search_hit,
+            platform_commands::get_platform_info,
+            update_commands::check_for_update,
         ])
         .events(collect_events![
             ScanFinished,

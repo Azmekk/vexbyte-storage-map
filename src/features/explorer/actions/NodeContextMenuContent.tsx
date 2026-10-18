@@ -11,6 +11,7 @@ import {
   ContextMenuLabel,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
+import { platformWording } from "@/lib/platform/platformWording";
 import type { NodeActionTarget } from "./nodeActionTarget";
 import type { NodeActions } from "./useNodeActions";
 
@@ -45,7 +46,7 @@ export function NodeContextMenuContent({
       )}
       <ContextMenuItem disabled={!hasLocation} onSelect={() => actions.openItem(target)}>
         {isFolder ? <FolderOpenIcon /> : <ExternalLinkIcon />}
-        {isFolder ? "Open in File Explorer" : "Open"}
+        {isFolder ? platformWording().openInFileManagerLabel : "Open"}
       </ContextMenuItem>
       <ContextMenuItem disabled={!hasLocation} onSelect={() => actions.revealItem(target)}>
         <FolderOpenIcon />

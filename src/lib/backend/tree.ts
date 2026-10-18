@@ -1,3 +1,4 @@
+import { platformWording } from "@/lib/platform/platformWording";
 import {
   type BreadcrumbItem,
   type ChildrenPage,
@@ -46,7 +47,7 @@ function describeTreeCommandError(commandError: TreeCommandError): string {
     case "nodeNotFound":
       return "This item does not exist in the scan.";
     case "nodeRemoved":
-      return "This item was moved to the Recycle Bin.";
+      return `This item was moved to the ${platformWording().binName}.`;
     case "backgroundTaskFailed":
       return "The query stopped unexpectedly. Please try again.";
   }

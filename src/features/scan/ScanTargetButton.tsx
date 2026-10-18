@@ -47,12 +47,13 @@ export function ScanTargetButton({
       <>
         <Button
           size="lg"
-          className="w-full"
+          className="w-full min-w-0"
+          title={label}
           disabled={scanStarter.isStarting}
           onClick={() => scanStarter.startScanWithMethod(scanOptions.method)}
         >
           {isFastScan ? <ZapIcon /> : <ScanSearchIcon />}
-          {isFastScan ? `Fast scan ${label}` : `Scan ${label}`}
+          <span className="truncate">{isFastScan ? `Fast scan ${label}` : `Scan ${label}`}</span>
         </Button>
         {problemDialog}
       </>
@@ -64,12 +65,13 @@ export function ScanTargetButton({
       <div className="flex w-full">
         <Button
           size="lg"
-          className="flex-1 rounded-r-none"
+          className="min-w-0 flex-1 rounded-r-none"
+          title={label}
           disabled={scanStarter.isStarting}
           onClick={() => scanStarter.startScanWithMethod("folderWalk")}
         >
           <ScanSearchIcon />
-          Scan {label}
+          <span className="truncate">Scan {label}</span>
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

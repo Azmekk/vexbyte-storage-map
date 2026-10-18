@@ -43,7 +43,7 @@ export const SEARCH_SYNTAX_SECTIONS: readonly SearchSyntaxSection[] = [
 /** Short notes under the table. */
 export const SEARCH_SYNTAX_NOTES: readonly string[] = [
   "Everything you type must match: holiday ext:jpg size:>2mb.",
-  "Sizes use binary units (kb, mb, gb, tb), like File Explorer.",
+  "Sizes use binary units (kb, mb, gb, tb): 1 kb is 1,024 bytes.",
   "OR, NOT, regular expressions and date filters are not supported yet.",
 ];
 

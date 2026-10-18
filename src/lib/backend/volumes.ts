@@ -1,3 +1,4 @@
+import { platformWording } from "@/lib/platform/platformWording";
 import { commands, type VolumeCommandError, type VolumeSummary } from "./generated";
 import { unwrapCommandResult } from "./unwrapCommandResult";
 
@@ -6,7 +7,7 @@ export type { DriveType, VolumeCommandError, VolumeKind, VolumeSummary } from ".
 function describeVolumeCommandError(commandError: VolumeCommandError): string {
   switch (commandError.kind) {
     case "volumeListFailed":
-      return `Windows could not list the drives on this computer. ${commandError.details}`;
+      return `${platformWording().systemNameAtSentenceStart} could not list the drives on this computer. ${commandError.details}`;
     case "backgroundTaskFailed":
       return "Listing the drives stopped unexpectedly. Please try again.";
   }

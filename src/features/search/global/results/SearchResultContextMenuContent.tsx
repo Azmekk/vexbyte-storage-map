@@ -7,6 +7,7 @@ import {
   ContextMenuShortcut,
 } from "@/components/ui/context-menu";
 import type { SearchHit } from "@/lib/backend/search";
+import { platformWording } from "@/lib/platform/platformWording";
 import { copyHitName, copyHitPath, openHit, revealHit } from "./searchHitActions";
 
 type SearchResultContextMenuContentProps = {
@@ -20,7 +21,7 @@ export function SearchResultContextMenuContent({ hit }: SearchResultContextMenuC
       <ContextMenuSeparator />
       <ContextMenuItem onSelect={() => openHit(hit)}>
         {hit.isDirectory ? <FolderOpenIcon /> : <ExternalLinkIcon />}
-        {hit.isDirectory ? "Open in File Explorer" : "Open"}
+        {hit.isDirectory ? platformWording().openInFileManagerLabel : "Open"}
         <ContextMenuShortcut>Enter</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem onSelect={() => revealHit(hit)}>

@@ -544,9 +544,13 @@ mod tests {
 
     use super::*;
 
-    fn volume(mount_point: &str, kind: VolumeKind) -> VolumeSummary {
+    fn root(drive_letter: char) -> PathBuf {
+        crate::platform::example_volume_root(drive_letter)
+    }
+
+    fn volume(mount_point: PathBuf, kind: VolumeKind) -> VolumeSummary {
         VolumeSummary {
-            mount_point: PathBuf::from(mount_point),
+            mount_point,
             label: String::new(),
             file_system_name: "NTFS".to_owned(),
             total_bytes: 100,
@@ -557,8 +561,8 @@ mod tests {
         }
     }
 
-    fn index_with_file(mount_point: &str, file_name: &str) -> VolumeSearchIndex {
-        let mut builder = FileTreeBuilder::new(PathBuf::from(mount_point), DirectoryKey::new(0));
+    fn index_with_file(mount_point: PathBuf, file_name: &str) -> VolumeSearchIndex {
+        let mut builder = FileTreeBuilder::new(mount_point.clone(), DirectoryKey::new(0));
         builder.add_entry(&NewEntry {
             name: file_name,
             kind: NodeKind::File,
@@ -570,28 +574,24 @@ mod tests {
             flags: NodeFlags::empty(),
             hard_link_identity: None,
         });
-        VolumeSearchIndex::from_file_tree(
-            PathBuf::from(mount_point),
-            builder.finish(),
-            ScanMethod::FolderWalk,
-        )
+        VolumeSearchIndex::from_file_tree(mount_point, builder.finish(), ScanMethod::FolderWalk)
     }
 
-    fn state_of(registry: &SearchIndexRegistry, mount_point: &str) -> VolumeIndexState {
+    fn state_of(registry: &SearchIndexRegistry, mount_point: &Path) -> VolumeIndexState {
         registry
             .status()
             .volumes
             .into_iter()
-            .find(|volume| volume.mount_point == Path::new(mount_point))
+            .find(|volume| volume.mount_point == mount_point)
             .unwrap()
             .state
     }
 
     fn two_local_volumes_and_a_cloud_drive() -> Vec<VolumeSummary> {
         vec![
-            volume(r"D:\", VolumeKind::LocalDisk),
-            volume(r"G:\", VolumeKind::CloudVirtual),
-            volume(r"C:\", VolumeKind::LocalDisk),
+            volume(root('D'), VolumeKind::LocalDisk),
+            volume(root('G'), VolumeKind::CloudVirtual),
+            volume(root('C'), VolumeKind::LocalDisk),
         ]
     }
 
@@ -609,19 +609,17 @@ mod tests {
     fn builds_local_volumes_system_volume_first_and_skips_the_rest() {
         let registry = SearchIndexRegistry::default();
 
-        let build_order = registry.record_volume_list(
-            two_local_volumes_and_a_cloud_drive(),
-            Some(Path::new(r"D:\")),
-        );
+        let build_order =
+            registry.record_volume_list(two_local_volumes_and_a_cloud_drive(), Some(&root('D')));
 
-        assert_eq!(build_order, [PathBuf::from(r"D:\"), PathBuf::from(r"C:\")]);
+        assert_eq!(build_order, [root('D'), root('C')]);
         assert_eq!(
-            state_of(&registry, r"G:\"),
+            state_of(&registry, &root('G')),
             VolumeIndexState::Skipped {
                 reason: SkipReason::CloudDrive
             }
         );
-        assert_eq!(state_of(&registry, r"C:\"), VolumeIndexState::Idle);
+        assert_eq!(state_of(&registry, &root('C')), VolumeIndexState::Idle);
         let mount_points: Vec<_> = registry
             .status()
             .volumes
@@ -630,7 +628,7 @@ mod tests {
             .collect();
         assert_eq!(
             mount_points,
-            [r"C:\", r"D:\", r"G:\"].map(PathBuf::from),
+            ['C', 'D', 'G'].map(root),
             "ordered by mount point"
         );
     }
@@ -654,7 +652,7 @@ mod tests {
     fn runs_at_most_two_builds_at_a_time() {
         let registry = SearchIndexRegistry::default();
         let mut volumes = two_local_volumes_and_a_cloud_drive();
-        volumes.push(volume(r"E:\", VolumeKind::LocalDisk));
+        volumes.push(volume(root('E'), VolumeKind::LocalDisk));
         let build_order = registry.record_volume_list(volumes, None);
 
         assert_eq!(registry.queue_builds(&build_order), 2);
@@ -665,12 +663,12 @@ mod tests {
         let third = registry.take_next_build().unwrap();
         assert_eq!(
             [first.mount_point, second.mount_point, third.mount_point],
-            [r"C:\", r"D:\", r"E:\"].map(PathBuf::from)
+            ['C', 'D', 'E'].map(root)
         );
         assert!(registry.take_next_build().is_none());
         assert!(registry.take_next_build().is_none());
         assert_eq!(
-            registry.queue_builds(&[PathBuf::from(r"C:\")]),
+            registry.queue_builds(&[root('C')]),
             0,
             "C: is still building"
         );
@@ -682,14 +680,11 @@ mod tests {
         let build_order = registry.record_volume_list(two_local_volumes_and_a_cloud_drive(), None);
         assert_eq!(registry.queue_builds(&build_order[..1]), 1);
         let built = registry.take_next_build().unwrap();
-        registry.record_build_success(&built.mount_point, index_with_file(r"C:\", "a.txt"));
+        registry.record_build_success(&built.mount_point, index_with_file(root('C'), "a.txt"));
         assert!(registry.take_next_build().is_none());
 
         assert_eq!(registry.queue_builds(&build_order[1..]), 1);
-        assert_eq!(
-            registry.take_next_build().unwrap().mount_point,
-            Path::new(r"D:\")
-        );
+        assert_eq!(registry.take_next_build().unwrap().mount_point, root('D'));
     }
 
     #[test]
@@ -700,13 +695,13 @@ mod tests {
 
         let c_volume = registry.take_next_build().unwrap();
         assert!(matches!(
-            state_of(&registry, r"C:\"),
+            state_of(&registry, &root('C')),
             VolumeIndexState::Building {
                 method: ScanMethod::FolderWalk,
                 ..
             }
         ));
-        registry.record_build_success(&c_volume.mount_point, index_with_file(r"C:\", "a.txt"));
+        registry.record_build_success(&c_volume.mount_point, index_with_file(root('C'), "a.txt"));
 
         let status = registry.status();
         assert_eq!(status.overall, OverallIndexStatus::Warming);
@@ -714,10 +709,10 @@ mod tests {
         assert_eq!(status.volumes[0].index.as_ref().unwrap().file_count, 1);
         let searchable = registry.searchable_indexes();
         assert_eq!(searchable.indexes.len(), 1);
-        assert_eq!(searchable.volumes_still_warming, [PathBuf::from(r"D:\")]);
+        assert_eq!(searchable.volumes_still_warming, [root('D')]);
 
         let d_volume = registry.take_next_build().unwrap();
-        registry.record_build_success(&d_volume.mount_point, index_with_file(r"D:\", "b.txt"));
+        registry.record_build_success(&d_volume.mount_point, index_with_file(root('D'), "b.txt"));
         assert_eq!(registry.status().overall, OverallIndexStatus::Ready);
         assert_eq!(
             registry.searchable_indexes().volumes_still_warming,
@@ -736,13 +731,13 @@ mod tests {
         registry.record_build_failure(&c_volume.mount_point, "access denied".to_owned());
         assert_eq!(registry.status().overall, OverallIndexStatus::Warming);
 
-        registry.record_build_success(&d_volume.mount_point, index_with_file(r"D:\", "b.txt"));
+        registry.record_build_success(&d_volume.mount_point, index_with_file(root('D'), "b.txt"));
         assert_eq!(
             registry.status().overall,
             OverallIndexStatus::PartiallyReady
         );
         assert_eq!(
-            state_of(&registry, r"C:\"),
+            state_of(&registry, &root('C')),
             VolumeIndexState::Failed {
                 reason: "access denied".to_owned()
             }
@@ -750,7 +745,7 @@ mod tests {
 
         let only_failures = SearchIndexRegistry::default();
         let order =
-            only_failures.record_volume_list(vec![volume(r"C:\", VolumeKind::LocalDisk)], None);
+            only_failures.record_volume_list(vec![volume(root('C'), VolumeKind::LocalDisk)], None);
         only_failures.queue_builds(&order);
         let volume = only_failures.take_next_build().unwrap();
         only_failures.record_build_failure(&volume.mount_point, "broken".to_owned());
@@ -760,10 +755,11 @@ mod tests {
     #[test]
     fn a_refresh_keeps_the_old_index_searchable_until_the_new_one_replaces_it() {
         let registry = SearchIndexRegistry::default();
-        let order = registry.record_volume_list(vec![volume(r"C:\", VolumeKind::LocalDisk)], None);
+        let order =
+            registry.record_volume_list(vec![volume(root('C'), VolumeKind::LocalDisk)], None);
         registry.queue_builds(&order);
         let c_volume = registry.take_next_build().unwrap();
-        registry.record_build_success(&c_volume.mount_point, index_with_file(r"C:\", "old.txt"));
+        registry.record_build_success(&c_volume.mount_point, index_with_file(root('C'), "old.txt"));
         assert!(registry.take_next_build().is_none());
 
         assert_eq!(registry.queue_builds(&order), 1);
@@ -775,17 +771,17 @@ mod tests {
         ));
         assert!(status.volumes[0].index.is_some());
         assert_eq!(status.overall, OverallIndexStatus::Ready);
-        let old_index = registry.index_holding(Path::new(r"C:\old.txt")).unwrap();
+        let old_index = registry.index_holding(&root('C').join("old.txt")).unwrap();
         assert_eq!(old_index.name(disk_scanner::NodeIndex::new(1)), "old.txt");
 
         registry.record_build_failure(&c_volume.mount_point, "disk busy".to_owned());
-        assert!(registry.index_holding(Path::new(r"C:\old.txt")).is_some());
+        assert!(registry.index_holding(&root('C').join("old.txt")).is_some());
         assert_eq!(registry.status().overall, OverallIndexStatus::Ready);
 
         registry.queue_builds(&order);
         registry.take_next_build().unwrap();
-        registry.record_build_success(&c_volume.mount_point, index_with_file(r"C:\", "new.txt"));
-        let new_index = registry.index_holding(Path::new(r"C:\new.txt")).unwrap();
+        registry.record_build_success(&c_volume.mount_point, index_with_file(root('C'), "new.txt"));
+        let new_index = registry.index_holding(&root('C').join("new.txt")).unwrap();
         assert_eq!(new_index.name(disk_scanner::NodeIndex::new(1)), "new.txt");
         assert_eq!(
             old_index.name(disk_scanner::NodeIndex::new(1)),
@@ -799,21 +795,21 @@ mod tests {
         let registry = SearchIndexRegistry::default();
         registry.record_volume_list(two_local_volumes_and_a_cloud_drive(), None);
 
-        assert_eq!(registry.check_refresh_target(Path::new(r"C:\")), Ok(()));
+        assert_eq!(registry.check_refresh_target(&root('C')), Ok(()));
         assert_eq!(
-            registry.check_refresh_target(Path::new(r"G:\")),
+            registry.check_refresh_target(&root('G')),
             Err(RefreshRequestError::VolumeNotIndexed {
-                mount_point: PathBuf::from(r"G:\"),
+                mount_point: root('G'),
                 reason: SkipReason::CloudDrive
             })
         );
         assert_eq!(
-            registry.check_refresh_target(Path::new(r"Z:\")),
+            registry.check_refresh_target(&root('Z')),
             Err(RefreshRequestError::VolumeNotFound {
-                mount_point: PathBuf::from(r"Z:\")
+                mount_point: root('Z')
             })
         );
-        assert_eq!(registry.queue_builds(&[PathBuf::from(r"G:\")]), 0);
+        assert_eq!(registry.queue_builds(&[root('G')]), 0);
     }
 
     #[test]
@@ -822,12 +818,13 @@ mod tests {
         let order = registry.record_volume_list(two_local_volumes_and_a_cloud_drive(), None);
         registry.queue_builds(&order);
         let c_volume = registry.take_next_build().unwrap();
-        registry.record_build_success(&c_volume.mount_point, index_with_file(r"C:\", "a.txt"));
+        registry.record_build_success(&c_volume.mount_point, index_with_file(root('C'), "a.txt"));
         let _d_volume_building = registry.take_next_build().unwrap();
 
-        let order = registry.record_volume_list(vec![volume(r"C:\", VolumeKind::LocalDisk)], None);
+        let order =
+            registry.record_volume_list(vec![volume(root('C'), VolumeKind::LocalDisk)], None);
 
-        assert_eq!(order, [PathBuf::from(r"C:\"), PathBuf::from(r"D:\")]);
+        assert_eq!(order, [root('C'), root('D')]);
         let mount_points: Vec<_> = registry
             .status()
             .volumes
@@ -836,30 +833,31 @@ mod tests {
             .collect();
         assert_eq!(
             mount_points,
-            [r"C:\", r"D:\"].map(PathBuf::from),
+            ['C', 'D'].map(root),
             "D: is kept while it builds; G: is gone"
         );
-        assert!(registry.index_holding(Path::new(r"C:\a.txt")).is_some());
+        assert!(registry.index_holding(&root('C').join("a.txt")).is_some());
     }
 
     #[test]
     fn progress_events_are_throttled() {
         let registry = SearchIndexRegistry::default();
-        let order = registry.record_volume_list(vec![volume(r"C:\", VolumeKind::LocalDisk)], None);
+        let order =
+            registry.record_volume_list(vec![volume(root('C'), VolumeKind::LocalDisk)], None);
         registry.queue_builds(&order);
         registry.take_next_build().unwrap();
 
-        assert!(registry.record_build_progress(Path::new(r"C:\"), 10, 2));
-        assert!(!registry.record_build_progress(Path::new(r"C:\"), 20, 3));
+        assert!(registry.record_build_progress(&root('C'), 10, 2));
+        assert!(!registry.record_build_progress(&root('C'), 20, 3));
         assert!(matches!(
-            state_of(&registry, r"C:\"),
+            state_of(&registry, &root('C')),
             VolumeIndexState::Building {
                 files_so_far: 20,
                 directories_so_far: 3,
                 ..
             }
         ));
-        assert!(!registry.record_build_progress(Path::new(r"Z:\"), 1, 1));
+        assert!(!registry.record_build_progress(&root('Z'), 1, 1));
     }
 
     #[test]
@@ -869,11 +867,11 @@ mod tests {
         assert_eq!(registry.queue_builds(&order), 2);
 
         registry.record_builder_start_failure("no threads");
-        assert_eq!(state_of(&registry, r"C:\"), VolumeIndexState::Idle);
+        assert_eq!(state_of(&registry, &root('C')), VolumeIndexState::Idle);
         registry.record_builder_start_failure("no threads");
 
         assert_eq!(
-            state_of(&registry, r"C:\"),
+            state_of(&registry, &root('C')),
             VolumeIndexState::Failed {
                 reason: "no threads".to_owned()
             }

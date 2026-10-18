@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TreeRecycleResult } from "@/lib/backend/fileActions";
 import type { NodeFlagSummary } from "@/lib/backend/tree";
+import { initializeCurrentPlatform, resetCurrentPlatform } from "@/lib/platform/currentPlatform";
 import { canRecycleNode, describeNodeFlags } from "../inspector/describeNodeFlags";
 import { describeRecycleOutcome } from "./describeRecycleOutcome";
 
@@ -77,5 +78,16 @@ describe("describeRecycleOutcome", () => {
     expect(messages.success).toBeNull();
     expect(messages.failure?.title).toBe("1 item could not be moved");
     expect(messages.failure?.description).toContain("no Recycle Bin");
+  });
+
+  it("talks about the Trash on Linux", () => {
+    initializeCurrentPlatform({ os: "linux", pathsAreCaseSensitive: true, appVersion: "0.2.0" });
+    try {
+      const messages = describeRecycleOutcome(recycleResult({ moved: ["/home/ana/a.iso"] }));
+      expect(messages.success?.title).toBe("Moved 1 item to the Trash");
+      expect(messages.success?.description).toContain("restore them from the Trash");
+    } finally {
+      resetCurrentPlatform();
+    }
   });
 });

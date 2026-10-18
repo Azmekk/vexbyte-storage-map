@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KEYBOARD_SHORTCUT_GROUPS } from "./keyboardShortcutList";
+import { keyboardShortcutGroups } from "./keyboardShortcutList";
 import { appShortcutAction, explorerShortcutAction } from "./shortcutActions";
 import type { ShortcutKeyPress } from "./shortcutKeyPress";
 
@@ -104,7 +104,7 @@ describe("explorerShortcutAction", () => {
 
 describe("keyboard shortcut list", () => {
   it("describes every shortcut once", () => {
-    const descriptions = KEYBOARD_SHORTCUT_GROUPS.flatMap((group) =>
+    const descriptions = keyboardShortcutGroups().flatMap((group) =>
       group.shortcuts.map((shortcut) => shortcut.description),
     );
     expect(new Set(descriptions).size).toBe(descriptions.length);

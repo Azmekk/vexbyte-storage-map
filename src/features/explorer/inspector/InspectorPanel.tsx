@@ -17,6 +17,7 @@ import type { ScanId } from "@/lib/backend/scans";
 import type { NodeIndex } from "@/lib/backend/tree";
 import { formatBytesAsReadableSize } from "@/lib/formatting/formatBytesAsReadableSize";
 import { sidePanelVariants } from "@/lib/motion/transitions";
+import { platformWording } from "@/lib/platform/platformWording";
 import { useLastSuccessfulData } from "@/lib/queryCache/useLastSuccessfulData";
 import { nodeActionTarget } from "../actions/nodeActionTarget";
 import { useNodeActions } from "../actions/useNodeActions";
@@ -169,8 +170,8 @@ export function InspectorPanel({ scanId, shownFolder, result }: InspectorPanelPr
                 <InspectorDetailList details={describeScanDetails(result)} />
                 {result.currentTotals.inaccessibleDirectoryCount > 0 && (
                   <p className="text-muted-foreground text-xs leading-relaxed">
-                    Some folders could not be read, so the real total may be larger. A scan as
-                    administrator can usually read them.
+                    Some folders could not be read, so the real total may be larger.{" "}
+                    {platformWording().unreadableFoldersHint}
                   </p>
                 )}
               </section>

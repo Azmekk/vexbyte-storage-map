@@ -6,5 +6,10 @@ mod windows;
 #[cfg(windows)]
 pub(crate) use windows::*;
 
-#[cfg(not(windows))]
-compile_error!("Vexbyte Storage Map only builds for Windows so far.");
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "linux")]
+pub(crate) use linux::*;
+
+#[cfg(not(any(windows, target_os = "linux")))]
+compile_error!("Vexbyte Storage Map only builds for Windows and Linux so far.");

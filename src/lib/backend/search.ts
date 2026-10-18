@@ -1,4 +1,5 @@
 import type { UnlistenFn } from "@tauri-apps/api/event";
+import { platformWording } from "@/lib/platform/platformWording";
 import {
   commands,
   events,
@@ -70,7 +71,7 @@ function describeSearchCommandError(commandError: SearchCommandError): string {
     case "pathNotInIndex":
       return `${commandError.path} is no longer in the search index. Refresh the index and search again.`;
     case "revealFailed":
-      return `Could not show ${commandError.path} in Explorer. ${commandError.details}`;
+      return `Could not show ${commandError.path} in ${platformWording().fileManagerName}. ${commandError.details}`;
     case "openFailed":
       return `Could not open ${commandError.path}. ${commandError.details}`;
     case "backgroundTaskFailed":

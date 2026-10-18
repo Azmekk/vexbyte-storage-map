@@ -1,6 +1,7 @@
 import { Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { platformWording } from "@/lib/platform/platformWording";
 
 type RecycleFileButtonProps = {
   fileName: string;
@@ -23,14 +24,16 @@ export function RecycleFileButton({ fileName, canRecycle, onRecycle }: RecycleFi
             className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             disabled={!canRecycle}
             onClick={onRecycle}
-            aria-label={`Move ${fileName} to Recycle Bin`}
+            aria-label={`Move ${fileName} to ${platformWording().binName}`}
           >
             <Trash2Icon />
           </Button>
         </span>
       </TooltipTrigger>
       <TooltipContent>
-        {canRecycle ? "Move this file to Recycle Bin" : "A group must keep at least one copy"}
+        {canRecycle
+          ? `Move this file to ${platformWording().binName}`
+          : "A group must keep at least one copy"}
       </TooltipContent>
     </Tooltip>
   );

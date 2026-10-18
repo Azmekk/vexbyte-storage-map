@@ -12,12 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatBytesAsReadableSize } from "@/lib/formatting/formatBytesAsReadableSize";
+import { platformWording } from "@/lib/platform/platformWording";
 import { FileTypeIcon } from "../FileTypeIcon";
 import { useRecycleConfirmation } from "./useRecycleConfirmation";
 
 export function RecycleConfirmationDialog() {
   const confirmation = useRecycleConfirmation();
   const itemCount = confirmation.items?.length ?? 0;
+  const { binName, restoreFromBinInstructions } = platformWording();
 
   return (
     <AlertDialog
@@ -29,11 +31,10 @@ export function RecycleConfirmationDialog() {
           <AlertDialogMedia className="bg-destructive/10 text-destructive">
             <Trash2Icon />
           </AlertDialogMedia>
-          <AlertDialogTitle>Move to the Recycle Bin?</AlertDialogTitle>
+          <AlertDialogTitle>Move to the {binName}?</AlertDialogTitle>
           <AlertDialogDescription>
-            {itemCount === 1 ? "This item moves" : "These items move"} to the Windows Recycle Bin.
-            Nothing is deleted for good, and you can restore {itemCount === 1 ? "it" : "them"} from
-            there.
+            {itemCount === 1 ? "This item moves" : "These items move"} to the {binName}. Nothing is
+            deleted for good, and you can restore {itemCount === 1 ? "it" : "them"} from there.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -62,7 +63,7 @@ export function RecycleConfirmationDialog() {
 
         <p className="flex items-center gap-2 text-muted-foreground text-xs">
           <Undo2Icon className="size-3.5" aria-hidden />
-          Restore anytime: open the Recycle Bin, right-click the item, then choose Restore.
+          {restoreFromBinInstructions}
         </p>
 
         <AlertDialogFooter>
@@ -77,7 +78,7 @@ export function RecycleConfirmationDialog() {
             ) : (
               <Trash2Icon />
             )}
-            Move {formatBytesAsReadableSize(confirmation.totalSize)} to Recycle Bin
+            Move {formatBytesAsReadableSize(confirmation.totalSize)} to {binName}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

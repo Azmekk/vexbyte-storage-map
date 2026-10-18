@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { volumeIndexDisplayName } from "@/features/search/global/status/describeVolumeIndexState";
 import type { VolumeSummary } from "@/lib/backend/volumes";
+import { initializeCurrentPlatform, resetCurrentPlatform } from "@/lib/platform/currentPlatform";
 import { describeVolume } from "./describeVolume";
 import { volumeDisplayName, volumeDriveLabel } from "./volumeDisplayName";
 import { calculateVolumeUsage, createVolumeUsageChartSegments } from "./volumeUsage";
@@ -78,5 +80,24 @@ describe("volumeDisplayName", () => {
       "E:\\Mounts\\Backup",
     );
     expect(volumeDriveLabel(createVolume({ mountPoint: "/" }))).toBe("/");
+  });
+});
+
+describe("volume names on Linux", () => {
+  afterEach(() => {
+    resetCurrentPlatform();
+  });
+
+  it("falls back to the last folder of the mount point, or File System for the root", () => {
+    initializeCurrentPlatform({ os: "linux", pathsAreCaseSensitive: true, appVersion: "0.2.0" });
+
+    expect(volumeDisplayName(createVolume({ label: "", mountPoint: "/" }))).toBe("File System");
+    expect(volumeDisplayName(createVolume({ label: "", mountPoint: "/media/ana/USB" }))).toBe(
+      "USB",
+    );
+    expect(volumeDriveLabel(createVolume({ mountPoint: "/home" }))).toBe("/home");
+    expect(volumeIndexDisplayName({ label: "", mountPoint: "/", volumeKind: "localDisk" })).toBe(
+      "File System (/)",
+    );
   });
 });

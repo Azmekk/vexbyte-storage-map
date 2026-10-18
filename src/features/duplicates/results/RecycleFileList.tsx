@@ -1,6 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
 import { formatBytesAsReadableSize } from "@/lib/formatting/formatBytesAsReadableSize";
+import { platformWording } from "@/lib/platform/platformWording";
 import { splitFilePath } from "../paths/splitFilePath";
 import { truncatePathMiddle } from "../paths/truncatePathMiddle";
 import { FileCategoryIcon } from "../shared/FileCategoryIcon";
@@ -28,7 +29,7 @@ export function RecycleFileList({ filesToRemove }: RecycleFileListProps) {
       <ul
         className="relative w-full"
         style={{ height: virtualizer.getTotalSize() }}
-        aria-label="Files to move to the Recycle Bin"
+        aria-label={`Files to move to the ${platformWording().binName}`}
       >
         {virtualizer.getVirtualItems().map((virtualItem) => {
           const file = filesToRemove[virtualItem.index];

@@ -3,6 +3,7 @@ import type {
   DuplicateSelectionSummary,
   FileCategory,
 } from "@/lib/backend/generated";
+import { platformWording } from "@/lib/platform/platformWording";
 import { fileCategoryForPath } from "../setup/fileCategoryOptions";
 
 export type FileToRemove = {
@@ -77,7 +78,7 @@ export function totalBytesOf(files: readonly FileToRemove[]): number {
 /** The label of the footer button: "Move all 12 marked files (3.4 GB) to Recycle Bin". */
 export function describeRecycleButton(fileCount: number, readableSize: string): string {
   if (fileCount === 1) {
-    return `Move 1 marked file (${readableSize}) to Recycle Bin`;
+    return `Move 1 marked file (${readableSize}) to ${platformWording().binName}`;
   }
-  return `Move all ${fileCount.toLocaleString("en-US")} marked files (${readableSize}) to Recycle Bin`;
+  return `Move all ${fileCount.toLocaleString("en-US")} marked files (${readableSize}) to ${platformWording().binName}`;
 }

@@ -10,6 +10,7 @@ import type {
   KeepRule,
 } from "@/lib/backend/generated";
 import { readableErrorMessage } from "@/lib/errors/readableErrorMessage";
+import { platformWording } from "@/lib/platform/platformWording";
 import { useDuplicateSearchStore } from "../search/useDuplicateSearchStore";
 import { findGroupInPages } from "./groupPageCache";
 import { isGroupWouldHaveNoKeptFileError } from "./isGroupWouldHaveNoKeptFileError";
@@ -161,7 +162,7 @@ export function useDuplicateResults(searchId: DuplicateSearchId): UseDuplicateRe
   const revealFile = useCallback(
     (path: string) => {
       revealDuplicateInExplorer(searchId, path).catch((error: unknown) => {
-        toast.error("Could not show the file in Explorer", {
+        toast.error(`Could not show the file in ${platformWording().fileManagerName}`, {
           description: readableErrorMessage(error),
         });
       });

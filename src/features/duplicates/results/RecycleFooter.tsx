@@ -1,5 +1,6 @@
 import { LoaderCircleIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { platformWording } from "@/lib/platform/platformWording";
 
 type RecycleFooterProps = {
   buttonLabel: string;
@@ -19,7 +20,7 @@ export function RecycleFooter({
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-3.5">
         <p className="text-muted-foreground text-sm">
           {canRecycle
-            ? "Kept copies stay where they are. Moved files can be restored from the Recycle Bin."
+            ? `Kept copies stay where they are. Moved files can be restored from the ${platformWording().binName}.`
             : "Mark copies as Remove to free space."}
         </p>
         <Button

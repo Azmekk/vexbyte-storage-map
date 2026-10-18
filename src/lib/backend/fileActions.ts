@@ -1,4 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { platformWording } from "@/lib/platform/platformWording";
 import {
   commands,
   type DuplicateSearchId,
@@ -29,21 +30,21 @@ function describeFileActionCommandError(commandError: FileActionCommandError): s
     case "nodeNotFound":
       return "This item does not exist in the scan.";
     case "nodeRemoved":
-      return "This item was already moved to the Recycle Bin.";
+      return `This item was already moved to the ${platformWording().binName}.`;
     case "nodeHasNoPath":
       return "This item is a summary of several files and has no single location on disk.";
     case "cannotRecycleScanRoot":
-      return "The scanned folder itself cannot be moved to the Recycle Bin.";
+      return `The scanned folder itself cannot be moved to the ${platformWording().binName}.`;
     case "searchNotFound":
       return "This duplicate search is no longer available. Please search again.";
     case "fileNotInSearch":
       return `${commandError.path} is not part of this duplicate search.`;
     case "revealFailed":
-      return `Could not show ${commandError.path} in Explorer. ${commandError.details}`;
+      return `Could not show ${commandError.path} in ${platformWording().fileManagerName}. ${commandError.details}`;
     case "openFailed":
       return `Could not open ${commandError.path}. ${commandError.details}`;
     case "recycleFailed":
-      return `The Recycle Bin operation failed. ${commandError.details}`;
+      return `The move to the ${platformWording().binName} failed. ${commandError.details}`;
     case "thumbnailFailed":
       return `Could not create a preview of ${commandError.path}.`;
     case "backgroundTaskFailed":
