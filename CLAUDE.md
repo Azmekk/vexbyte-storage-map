@@ -1,6 +1,6 @@
 # Vexbyte Storage Map
 
-Disk space explorer and duplicate finder. Ships on Windows and Linux (x64); macOS is coming soon. Tauri 2 + Rust (edition 2024) + React 19 + TypeScript.
+Disk space explorer and duplicate finder. Ships on Windows and Linux (x64); macOS may come in the future (no build yet). Tauri 2 + Rust (edition 2024) + React 19 + TypeScript.
 The full design is in `PLAN.md`. Read sections 3 (code style), 4 (layout) and 15 (safety) before writing code.
 
 ## Non-negotiable safety rules

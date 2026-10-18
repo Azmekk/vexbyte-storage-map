@@ -4,7 +4,7 @@ A fast, good-looking disk space explorer for Windows and Linux with a built-in d
 
 **VSM** scans a drive or folder and shows you where the space goes: a sortable tree, a zoomable treemap, a sunburst, a file type breakdown and a largest-files list. On NTFS drives it can read the Master File Table directly for scans that finish in seconds. The duplicate finder looks through your Pictures, Videos, Music, Documents and Downloads for exact copies and lets you review them with thumbnails before anything moves to the Recycle Bin (the Trash on Linux).
 
-**Status:** pre-release. Windows 10 and 11 (64-bit) and x64 Linux (`.deb`, `.rpm` and AppImage, built on Ubuntu 22.04: Debian 12+, Ubuntu 22.04+, Fedora, RHEL 10, Arch). macOS is coming soon. Downloads: https://storagemap.vexbyte.com/
+**Status:** pre-release. Windows 10 and 11 (64-bit) and x64 Linux (`.deb`, `.rpm` and AppImage, built on Ubuntu 22.04: Debian 12+, Ubuntu 22.04+, Fedora, RHEL 10, Arch). There is no macOS build yet; one may come in the future. Downloads: https://storagemap.vexbyte.com/
 
 ## Screenshots
 

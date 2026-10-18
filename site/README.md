@@ -31,12 +31,20 @@ Biome runs from the repo root and covers this folder too (`pnpm check` at the ro
 4. 64-bit Windows (x64 and ARM) gets the installer directly; after a click the page explains the
    SmartScreen prompt. x64 Linux gets three buttons (.deb for Debian, Ubuntu and Mint, .rpm for
    Fedora, RHEL and openSUSE, AppImage for Arch and the rest), with one highlighted from the user
-   agent, and after a click the install command for that file. macOS sees "Coming soon to macOS",
+   agent, and after a click the install command for that file. macOS sees "Not available for macOS yet" with a
+   "Request macOS support" button that links to the GitHub issue counting interest (see below),
    ARM Linux an "x64 only for now" notice, and phones, tablets and 32-bit Windows "Not available
    for ...". These come with a link to the GitHub releases page and a copy-link button.
 
 The GitHub API allows 60 unauthenticated requests per hour per visitor IP, which a download page
 never comes close to.
+
+## macOS interest
+
+There is no macOS build, and one may come later. Mac visitors are sent to a single GitHub issue
+(`MAC_SUPPORT_REQUEST_URL` in `src/lib/release/repository.ts`). Its thumbs-up count is the tally,
+and everyone subscribed to it can be told in one comment when a macOS build ships. No form, no
+backend and no visitor data on the site.
 
 ## Changelog page
 

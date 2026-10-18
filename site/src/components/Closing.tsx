@@ -28,7 +28,7 @@ export function Closing({ downloadTarget, onDownloadStarted, startedDownload }: 
           Find out where it all went.
         </motion.h2>
         <p className="lede">
-          Windows and Linux today, macOS coming soon. No admin needed to use it, and on Windows it
+          Windows and Linux, with macOS maybe later. No admin needed to use it, and on Windows it
           installs for your user only.
         </p>
         <DownloadBlock downloadTarget={downloadTarget} onDownloadStarted={onDownloadStarted} />

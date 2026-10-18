@@ -3,8 +3,8 @@ import { useCopyPageLink } from "../hooks/useCopyPageLink";
 import type { DownloadTarget } from "../hooks/useDownloadTarget";
 import { useMagneticHover } from "../hooks/useMagneticHover";
 import { formatMegabytes } from "../lib/release/formatSize";
-import { isComingSoonPlatform, unsupportedPlatformName } from "../lib/release/platform";
-import { RELEASES_URL, REPOSITORY_URL } from "../lib/release/repository";
+import { isRequestablePlatform, unsupportedPlatformName } from "../lib/release/platform";
+import { MAC_SUPPORT_REQUEST_URL, RELEASES_URL, REPOSITORY_URL } from "../lib/release/repository";
 import type { StartedDownload } from "../lib/release/startedDownload";
 import { WindowsIcon } from "./icons/WindowsIcon";
 import { LinuxDownloads } from "./LinuxDownloads";
@@ -17,6 +17,7 @@ type DownloadBlockProps = {
 type Notice = {
   badge: string;
   text: string;
+  request?: { label: string; url: string };
 };
 
 function describeRelease({ release }: DownloadTarget): string {
@@ -43,15 +44,16 @@ function noticeFor({ platform, release }: DownloadTarget): Notice | null {
   }
   const unsupportedName = unsupportedPlatformName(platform);
   if (unsupportedName === null) return null;
-  if (isComingSoonPlatform(platform)) {
+  if (isRequestablePlatform(platform)) {
     return {
-      badge: `Coming soon to ${unsupportedName}`,
-      text: `The ${unsupportedName} version is on its way. For now Vexbyte Storage Map runs on 64-bit Windows 10 and 11 and on x64 Linux: open this page on one of those to download it, or follow the releases on GitHub.`,
+      badge: `Not available for ${unsupportedName} yet`,
+      text: `Vexbyte Storage Map runs on 64-bit Windows 10 and 11 and on x64 Linux. A ${unsupportedName} version may come later. If you'd use it, add a thumbs-up on GitHub so we know, and subscribe there to hear when it ships.`,
+      request: { label: `Request ${unsupportedName} support`, url: MAC_SUPPORT_REQUEST_URL },
     };
   }
   return {
     badge: `Not available for ${unsupportedName}`,
-    text: "Vexbyte Storage Map runs on 64-bit Windows 10 and 11 and on x64 Linux today, with macOS coming soon. Open this page on your computer to download it, or get it from GitHub.",
+    text: "Vexbyte Storage Map runs on 64-bit Windows 10 and 11 and on x64 Linux. Open this page on your computer to download it, or get it from GitHub.",
   };
 }
 
@@ -68,6 +70,11 @@ export function DownloadBlock({ downloadTarget, onDownloadStarted }: DownloadBlo
           <span className="unsupported-badge">{notice.badge}</span>
           <p>{notice.text}</p>
           <div className="unsupported-actions">
+            {notice.request !== undefined && (
+              <a className="secondary-button request-button" href={notice.request.url}>
+                {notice.request.label}
+              </a>
+            )}
             <a className="secondary-button" href={RELEASES_URL}>
               View releases on GitHub
             </a>

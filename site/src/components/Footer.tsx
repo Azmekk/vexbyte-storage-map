@@ -6,9 +6,7 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="wrap footer-inner">
-        <span>
-          © {new Date().getFullYear()} Vexbyte · MIT license · Windows and Linux, macOS coming soon
-        </span>
+        <span>© {new Date().getFullYear()} Vexbyte · MIT license · Windows and Linux</span>
         <nav aria-label="Footer">
           <a href={CHANGELOG_URL}>Changelog</a>
           <a href={REPOSITORY_URL}>Source</a>

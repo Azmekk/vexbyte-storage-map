@@ -49,7 +49,7 @@ The library crates in `crates/` keep their descriptive names (`disk_scanner`, `d
 
 - Near-duplicate detection (similar images, audio fingerprinting).
 - Cleanup recommendations / issue detection. Keep the architecture open to it, but build nothing for it now.
-- macOS builds. Windows and Linux (x64, since 0.2.0) ship today; the code must stay easily portable to macOS; see section 16 (Portability rules).
+- macOS builds. Windows and Linux (x64, since 0.2.0) ship today. macOS may be added in the future (a distributable build needs a paid Apple Developer ID to sign and notarize it), so the code must stay easily portable to macOS; see section 16 (Portability rules). The download page counts interest through one GitHub issue.
 - Scanning or deduplicating system folders. The duplicate finder never touches Program Files, Windows, AppData or similar.
 
 ---
@@ -637,7 +637,7 @@ Functions in `platform/` take and return only crate-owned types, never `windows:
 
 ### Feature matrix
 
-| Feature | Windows | macOS (later) | Linux (0.2.0) |
+| Feature | Windows | macOS (maybe in the future) | Linux (0.2.0) |
 |---|---|---|---|
 | Folder walk | yes | yes | yes |
 | Fast scan | MFT | none | none |

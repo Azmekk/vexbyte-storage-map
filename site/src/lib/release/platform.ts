@@ -22,7 +22,7 @@ type NavigatorWithHints = Navigator & {
   };
 };
 
-/** What to call a platform the installer can't run on, as in "Not available for …" or "Coming soon to …". */
+/** What to call a platform the installer can't run on, as in "Not available for …". */
 export function unsupportedPlatformName(platform: Platform): string | null {
   switch (platform) {
     case "mobile":
@@ -38,8 +38,8 @@ export function unsupportedPlatformName(platform: Platform): string | null {
   }
 }
 
-/** Platforms that get their own build later, so the page says "Coming soon" instead. */
-export function isComingSoonPlatform(platform: Platform): boolean {
+/** Platforms that may get their own build later, so the page asks visitors to request it. */
+export function isRequestablePlatform(platform: Platform): boolean {
   return platform === "mac";
 }
 

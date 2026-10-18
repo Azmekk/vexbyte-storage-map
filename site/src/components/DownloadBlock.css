@@ -198,6 +198,16 @@
   color: var(--text-soft);
 }
 
+.request-button {
+  border-color: rgba(109, 139, 255, 0.55);
+  background: rgba(109, 139, 255, 0.18);
+}
+
+.request-button:hover {
+  border-color: var(--glow);
+  background: rgba(109, 139, 255, 0.28);
+}
+
 .unsupported-actions {
   display: flex;
   flex-wrap: wrap;

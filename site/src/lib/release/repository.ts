@@ -3,6 +3,9 @@ export const REPOSITORY_URL = `https://github.com/${REPOSITORY}`;
 export const RELEASES_URL = `${REPOSITORY_URL}/releases`;
 export const LATEST_RELEASE_API_URL = `https://api.github.com/repos/${REPOSITORY}/releases/latest`;
 export const ISSUES_URL = `${REPOSITORY_URL}/issues`;
+// The one issue where macOS interest is counted: visitors add a thumbs-up and can subscribe to hear
+// when a macOS build ships. Its reaction count is the tally.
+export const MAC_SUPPORT_REQUEST_URL = `${ISSUES_URL}/1`;
 
 // GitHub turns the spaces in "Vexbyte Storage Map" into dots, so assets are matched by suffix.
 export const WINDOWS_INSTALLER_SUFFIX = "_x64-setup.exe";

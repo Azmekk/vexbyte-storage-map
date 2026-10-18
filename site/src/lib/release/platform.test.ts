@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyPlatform,
-  isComingSoonPlatform,
+  isRequestablePlatform,
   preferredLinuxPackageKind,
   unsupportedPlatformName,
 } from "./platform";
@@ -79,14 +79,14 @@ describe("unsupportedPlatformName", () => {
   });
 });
 
-describe("isComingSoonPlatform", () => {
-  it("marks only macOS as coming soon", () => {
-    expect(isComingSoonPlatform("mac")).toBe(true);
-    expect(isComingSoonPlatform("linux")).toBe(false);
-    expect(isComingSoonPlatform("linux-arm64")).toBe(false);
-    expect(isComingSoonPlatform("mobile")).toBe(false);
-    expect(isComingSoonPlatform("windows-32")).toBe(false);
-    expect(isComingSoonPlatform("windows-x64")).toBe(false);
+describe("isRequestablePlatform", () => {
+  it("lets only macOS visitors request a build", () => {
+    expect(isRequestablePlatform("mac")).toBe(true);
+    expect(isRequestablePlatform("linux")).toBe(false);
+    expect(isRequestablePlatform("linux-arm64")).toBe(false);
+    expect(isRequestablePlatform("mobile")).toBe(false);
+    expect(isRequestablePlatform("windows-32")).toBe(false);
+    expect(isRequestablePlatform("windows-x64")).toBe(false);
   });
 });
 
