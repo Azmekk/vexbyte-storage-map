@@ -54,8 +54,7 @@ export function Hero({ downloadTarget, onDownloadStarted }: HeroProps) {
           </span>
         </h1>
         <motion.p className="lede" {...fadeUp(0.25)}>
-          A fast, good-looking space explorer and duplicate finder for Windows. Read-only scans,
-          treemaps and sunbursts, instant search, and nothing deleted without the Recycle Bin.
+          A fast disk space explorer. Scan, search and find duplicates.
         </motion.p>
         <motion.div {...fadeUp(0.4)}>
           <DownloadBlock downloadTarget={downloadTarget} onDownloadStarted={onDownloadStarted} />

@@ -26,9 +26,9 @@ Biome runs from the repo root and covers this folder too (`pnpm check` at the ro
 3. If GitHub can't be reached, the button links to the installer for the app version in the root
    `package.json`, which is read at build time. So a site built from a release commit always has a
    working fallback.
-4. 64-bit Windows (x64 and ARM) gets the installer directly. Phones, tablets, macOS, Linux and
-   32-bit Windows see a "Not available for …" notice with a link to the GitHub releases page and a
-   copy-link button.
+4. 64-bit Windows (x64 and ARM) gets the installer directly. macOS and Linux see a "Coming soon
+   to …" notice; phones, tablets and 32-bit Windows see "Not available for …". Both come with a
+   link to the GitHub releases page and a copy-link button.
 
 The GitHub API allows 60 unauthenticated requests per hour per visitor IP, which a download page
 never comes close to.

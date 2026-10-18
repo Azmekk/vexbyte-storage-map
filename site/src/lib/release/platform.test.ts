@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyPlatform, unsupportedPlatformName } from "./platform";
+import { classifyPlatform, isComingSoonPlatform, unsupportedPlatformName } from "./platform";
 
 const WINDOWS_CHROME =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
@@ -53,5 +53,15 @@ describe("unsupportedPlatformName", () => {
     expect(unsupportedPlatformName("windows-x64")).toBeNull();
     expect(unsupportedPlatformName("windows-arm64")).toBeNull();
     expect(unsupportedPlatformName("unknown")).toBeNull();
+  });
+});
+
+describe("isComingSoonPlatform", () => {
+  it("marks macOS and Linux as coming soon, and nothing else", () => {
+    expect(isComingSoonPlatform("mac")).toBe(true);
+    expect(isComingSoonPlatform("linux")).toBe(true);
+    expect(isComingSoonPlatform("mobile")).toBe(false);
+    expect(isComingSoonPlatform("windows-32")).toBe(false);
+    expect(isComingSoonPlatform("windows-x64")).toBe(false);
   });
 });

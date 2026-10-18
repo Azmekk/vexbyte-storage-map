@@ -26,7 +26,8 @@ export function Closing({ downloadTarget, onDownloadStarted, showSmartScreenNote
           Find out where it all went.
         </motion.h2>
         <p className="lede">
-          Windows 10 and 11, 64-bit. Installs for your user only, no admin needed.
+          Windows 10 and 11 today, macOS and Linux coming soon. Installs for your user only, no
+          admin needed.
         </p>
         <DownloadBlock downloadTarget={downloadTarget} onDownloadStarted={onDownloadStarted} />
         <SmartScreenNote isVisible={showSmartScreenNote} />

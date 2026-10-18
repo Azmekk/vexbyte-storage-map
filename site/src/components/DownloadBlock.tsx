@@ -3,7 +3,7 @@ import { useCopyPageLink } from "../hooks/useCopyPageLink";
 import type { DownloadTarget } from "../hooks/useDownloadTarget";
 import { useMagneticHover } from "../hooks/useMagneticHover";
 import { formatMegabytes } from "../lib/release/formatSize";
-import { unsupportedPlatformName } from "../lib/release/platform";
+import { isComingSoonPlatform, unsupportedPlatformName } from "../lib/release/platform";
 import { RELEASES_URL, REPOSITORY_URL } from "../lib/release/repository";
 import { WindowsIcon } from "./icons/WindowsIcon";
 
@@ -25,13 +25,19 @@ export function DownloadBlock({ downloadTarget, onDownloadStarted }: DownloadBlo
   const unsupportedName = unsupportedPlatformName(platform);
 
   if (unsupportedName !== null) {
+    const isComingSoon = isComingSoonPlatform(platform);
     return (
       <div className="download">
         <div className="unsupported" role="status">
-          <span className="unsupported-badge">Not available for {unsupportedName}</span>
+          <span className="unsupported-badge">
+            {isComingSoon
+              ? `Coming soon to ${unsupportedName}`
+              : `Not available for ${unsupportedName}`}
+          </span>
           <p>
-            Vexbyte Storage Map runs on 64-bit Windows 10 and 11. Open this page on your Windows PC
-            to download it, or get the installer from GitHub.
+            {isComingSoon
+              ? `The ${unsupportedName} version is on its way. For now Vexbyte Storage Map runs on 64-bit Windows 10 and 11: open this page on a Windows PC to download it, or follow the releases on GitHub.`
+              : "Vexbyte Storage Map runs on 64-bit Windows 10 and 11 today, with macOS and Linux coming soon. Open this page on your computer to download it, or get the installer from GitHub."}
           </p>
           <div className="unsupported-actions">
             <a className="secondary-button" href={RELEASES_URL}>
