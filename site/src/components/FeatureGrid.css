@@ -1,0 +1,263 @@
+.bento {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 48px;
+}
+
+.card {
+  position: relative;
+  grid-column: span 2;
+  min-width: 0;
+  border-radius: 20px;
+  padding: 26px;
+  background: var(--ink-raised);
+  border: 1px solid var(--ink-line);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* A soft light and a brighter rim follow the pointer across each card. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--mx, -100px) var(--my, -100px),
+    rgba(140, 160, 255, 0.1),
+    transparent 45%
+  );
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background: radial-gradient(
+    260px circle at var(--mx, -100px) var(--my, -100px),
+    rgba(170, 190, 255, 0.55),
+    transparent 50%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.card-wide {
+  grid-column: span 4;
+}
+
+.card-half {
+  grid-column: span 3;
+}
+
+.card p {
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+.card .eyebrow {
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .bento {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card,
+  .card-wide,
+  .card-half {
+    grid-column: auto;
+  }
+}
+
+.card .card-headline {
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  max-width: 18ch;
+}
+
+.engines {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: auto;
+}
+
+.engine {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--ink-line-strong);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.engine b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.engine b::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--engine-color);
+}
+
+.engine span {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+@media (max-width: 480px) {
+  .engines {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.keys kbd {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--ink-line-strong);
+  border-bottom-width: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.search-box {
+  margin-top: auto;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--ink-line-strong);
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  min-width: 0;
+}
+
+.search-caret {
+  width: 2px;
+  height: 18px;
+  background: var(--glow);
+  animation: caret-blink 1s steps(2) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-soft);
+  min-height: 70px;
+}
+
+.search-result {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.search-result span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.pipe-stage {
+  position: relative;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ink-line-strong);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+  color: var(--text-soft);
+  transition:
+    border-color 0.4s,
+    color 0.4s,
+    background 0.4s;
+}
+
+.pipe-stage.is-lit {
+  color: var(--text);
+  border-color: rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.pipe-arrow {
+  color: var(--text-faint);
+}
+
+.safety-list {
+  list-style: none;
+  margin: auto 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.safety-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--text-soft);
+}
+
+.safety-list svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--archive);
+}

@@ -1,0 +1,123 @@
+/* Layout: centered orbit hero, a tilted window that settles as it scrolls in, view tabs, a bento of capabilities, a closing orbit. */
+:root {
+  color-scheme: dark;
+  --ink: #05060a;
+  --ink-raised: #0b0d14;
+  --ink-line: rgba(196, 210, 255, 0.09);
+  --ink-line-strong: rgba(196, 210, 255, 0.18);
+  --text: #eef0f7;
+  --text-soft: #9aa1b5;
+  --text-faint: #5f6579;
+  --glass: rgba(255, 255, 255, 0.06);
+  --glass-strong: rgba(255, 255, 255, 0.12);
+  --video: #3b82f6;
+  --image: #f97316;
+  --archive: #10b981;
+  --audio: #eab308;
+  --document: #ec4899;
+  --presentation: #8b5cf6;
+  --glow: #6d8bff;
+  --font-display: "Bricolage Grotesque Variable", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Onest Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  text-wrap: balance;
+  margin: 0;
+}
+
+h2 {
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+
+h3 {
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+p {
+  margin: 0;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.lede {
+  color: var(--text-soft);
+  font-size: clamp(16px, 1.6vw, 19px);
+  max-width: 56ch;
+}
+
+.orbit-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.section {
+  padding-block: clamp(60px, 8vw, 120px);
+  border-top: 1px solid var(--ink-line);
+}
+
+.section-title {
+  margin-top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

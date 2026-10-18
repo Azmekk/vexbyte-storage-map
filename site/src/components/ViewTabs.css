@@ -1,0 +1,150 @@
+.views-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  border: 1px solid var(--ink-line-strong);
+  background: var(--glass);
+}
+
+.tab {
+  position: relative;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.35s;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--glow);
+  outline-offset: 2px;
+}
+
+.tab-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--text);
+}
+
+.tab-swatch,
+.tab-label {
+  position: relative;
+}
+
+.tab-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.stage {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.stage-frame {
+  position: relative;
+  aspect-ratio: 1400 / 900;
+  max-width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--ink-line-strong);
+  background: var(--ink-raised);
+  box-shadow: 0 50px 120px -50px rgba(70, 100, 255, 0.35);
+}
+
+.stage-frame img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.035);
+  filter: blur(6px);
+  transition:
+    opacity 0.7s var(--ease-out),
+    transform 1.2s var(--ease-out),
+    filter 0.7s var(--ease-out);
+}
+
+.stage-frame img.is-active {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.stage-caption {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 52px;
+}
+
+.stage-caption p {
+  color: var(--text-soft);
+  max-width: 60ch;
+}
+
+.stage-progress {
+  flex: none;
+  width: 120px;
+  height: 2px;
+  margin-top: 12px;
+  border-radius: 2px;
+  background: var(--ink-line-strong);
+  overflow: hidden;
+}
+
+.stage-progress span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--text);
+  transform-origin: left;
+}
+
+@media (max-width: 640px) {
+  .tabs {
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+    justify-content: center;
+    padding-inline: 8px;
+  }
+
+  .stage-progress {
+    display: none;
+  }
+}

@@ -40,3 +40,6 @@ cargo test --workspace
 ```
 
 Crates in `crates/` must build and test without Tauri. `src-tauri` is a thin adapter only.
+
+`site/` is the public download page: a separate static Vite + React project with its own
+`package.json` (run `pnpm install`, `pnpm dev`, `pnpm test` inside it). See `site/README.md`.
