@@ -9,7 +9,45 @@ permissions:
   contents: write
 
 jobs:
+  # Creates the GitHub release once, with notes taken from CHANGELOG.md, so both build jobs upload
+  # into the same release. Fails when CHANGELOG.md has no section for the tagged version.
+  create-release:
+    runs-on: ubuntu-22.04
+    outputs:
+      release-id: ${{ steps.create.outputs.release-id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write the release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          {
+            bash scripts/extract-changelog-section.sh "$version"
+            cat <<'EOF'
+
+          ## Downloads
+
+          - **Windows 10 and 11 (64-bit):** the `_x64-setup.exe` installer.
+          - **Debian, Ubuntu, Linux Mint:** the `.deb` package (`sudo apt install ./<file>.deb`).
+          - **Fedora, RHEL, openSUSE:** the `.rpm` package (`sudo dnf install ./<file>.rpm`).
+          - **Arch and other distributions:** the `.AppImage` (`chmod +x <file>.AppImage`, then run it).
+
+          Or pick the right file for your system at https://storagemap.vexbyte.com/.
+          EOF
+          } > release-notes.md
+
+      - id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Vexbyte Storage Map $GITHUB_REF_NAME" \
+            --notes-file release-notes.md
+          release_id="$(gh release view "$GITHUB_REF_NAME" --json databaseId --jq .databaseId)"
+          echo "release-id=$release_id" >> "$GITHUB_OUTPUT"
+
   build-windows:
+    needs: create-release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,19 +76,52 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
-      # Builds the NSIS installer and attaches it to a GitHub release named after the tag.
+      # Builds the NSIS installer and attaches it to the release created above.
       # Builds are unsigned by default. Authenticode signing of the installer is configured with
       # bundle.windows.certificateThumbprint or bundle.windows.signCommand in tauri.conf.json.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional updater signing key; unset secrets are empty and the build stays unsigned.
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Vexbyte Storage Map ${{ github.ref_name }}"
-          releaseBody: "Download the setup .exe below to install this version. Windows 10 and 11, 64-bit."
-          releaseDraft: false
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release-id }}
           args: --bundles nsis
+
+  # Built on the oldest supported base: a binary runs only where glibc is at least as new as the
+  # one it was built against, and Ubuntu 22.04 (glibc 2.35) covers Debian 12+, Ubuntu 22.04+,
+  # current Fedora, RHEL 10 and Arch.
+  build-linux:
+    needs: create-release
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the Linux build dependencies of Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf rpm
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.1
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - run: pnpm install --frozen-lockfile
+
+      # Builds the .deb, .rpm and AppImage and attaches them to the release created above.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release-id }}
+          args: --bundles deb,rpm,appimage

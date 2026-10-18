@@ -8,9 +8,20 @@ on:
 
 jobs:
   check:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Ubuntu 22.04 is the oldest Linux base the release packages are built on.
+        os: [windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install the Linux build dependencies of Tauri
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev             libayatana-appindicator3-dev librsvg2-dev
 
       # The pnpm version comes from the packageManager field in package.json.
       - uses: pnpm/action-setup@v4

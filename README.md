@@ -1,10 +1,10 @@
 # Vexbyte Storage Map
 
-A fast, good-looking disk space explorer for Windows with a built-in duplicate finder for your personal files.
+A fast, good-looking disk space explorer for Windows and Linux with a built-in duplicate finder for your personal files.
 
-**VSM** scans a drive or folder and shows you where the space goes: a sortable tree, a zoomable treemap, a sunburst, a file type breakdown and a largest-files list. On NTFS drives it can read the Master File Table directly for scans that finish in seconds. The duplicate finder looks through your Pictures, Videos, Music, Documents and Downloads for exact copies and lets you review them with thumbnails before anything moves to the Recycle Bin.
+**VSM** scans a drive or folder and shows you where the space goes: a sortable tree, a zoomable treemap, a sunburst, a file type breakdown and a largest-files list. On NTFS drives it can read the Master File Table directly for scans that finish in seconds. The duplicate finder looks through your Pictures, Videos, Music, Documents and Downloads for exact copies and lets you review them with thumbnails before anything moves to the Recycle Bin (the Trash on Linux).
 
-**Status:** 0.1.0 is the first pre-release. Windows 10 and 11 (64-bit) only.
+**Status:** pre-release. Windows 10 and 11 (64-bit) and x64 Linux (`.deb`, `.rpm` and AppImage, built on Ubuntu 22.04: Debian 12+, Ubuntu 22.04+, Fedora, RHEL 10, Arch). macOS is coming soon. Downloads: https://storagemap.vexbyte.com/
 
 ## Screenshots
 
@@ -52,7 +52,7 @@ for duplicates, because reading them would download their files. The
 only action that changes anything on disk is **Move to Recycle Bin**, from the explorer or the
 duplicates screen. It always shows a confirmation dialog listing exactly what will move, the
 duplicate finder re-checks every file right before moving it and always keeps at least one copy,
-and everything moved can be restored from the Windows Recycle Bin.
+and everything moved can be restored from the Windows Recycle Bin or the Linux Trash.
 
 ## Tech
 
@@ -60,7 +60,10 @@ Tauri 2, Rust (edition 2024), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, 
 
 ## Building
 
-Requirements: Rust 1.99+, Node 24+, pnpm, Visual Studio Build Tools with the C++ workload, WebView2 (ships with Windows 11).
+Requirements: Rust 1.99+, Node 24+, pnpm, and:
+
+- **Windows:** Visual Studio Build Tools with the C++ workload, WebView2 (ships with Windows 11).
+- **Linux (Debian/Ubuntu):** `sudo apt install build-essential curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`. Other distributions: see the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 pnpm install

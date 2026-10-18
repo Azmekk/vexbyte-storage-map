@@ -49,7 +49,7 @@ The library crates in `crates/` keep their descriptive names (`disk_scanner`, `d
 
 - Near-duplicate detection (similar images, audio fingerprinting).
 - Cleanup recommendations / issue detection. Keep the architecture open to it, but build nothing for it now.
-- Non-Windows builds for 0.1.0. Windows is the only shipping target for now, but the code must stay easily portable to macOS and Linux later; see section 16 (Portability rules).
+- macOS builds. Windows and Linux (x64, since 0.2.0) ship today; the code must stay easily portable to macOS; see section 16 (Portability rules).
 - Scanning or deduplicating system folders. The duplicate finder never touches Program Files, Windows, AppData or similar.
 
 ---
@@ -605,11 +605,11 @@ These rules bind every contributor, human or agent, during development.
 
 ## 16. Portability rules
 
-Windows is the only build target for 0.1.0, but the app must stay easily portable to macOS and Linux. These rules keep platform code at one seam.
+Windows and Linux (since 0.2.0) are the build targets, and the app must stay easily portable to macOS. These rules keep platform code at one seam.
 
 ### Layout
 
-- Each crate has a `platform/` module instead of `windows_api/`. `platform/mod.rs` does `#[cfg(windows)] mod windows; #[cfg(windows)] pub use windows::*;` (and the same for a future `unix`). `platform/windows/` holds the Win32 wrappers, one per file.
+- Each crate has a `platform/` module instead of `windows_api/`. `platform/mod.rs` does `#[cfg(windows)] mod windows; #[cfg(windows)] pub use windows::*;` and the same with `#[cfg(target_os = "linux")]` for `linux` (macOS would add `macos`). `platform/windows/` holds the Win32 wrappers, `platform/linux/` the Linux code, one responsibility per file.
 - No trait, no dynamic dispatch, no runtime selection: each backend exposes the same free functions with the same signatures and the compiler enforces the contract.
 
 ### Platform-neutral types at the seam
@@ -617,8 +617,8 @@ Windows is the only build target for 0.1.0, but the app must stay easily portabl
 Functions in `platform/` take and return only crate-owned types, never `windows::` types.
 
 - `DirectoryEntry { name, kind, logical_size, allocated_size, modified_time: SystemTime, identity: FileIdentity, flags: EntryFlags }`
-- `FileIdentity` is an opaque newtype (Windows: volume serial + file ID; Unix later: device + inode). Only `Eq`, `Hash`, `Clone`, `Copy` are exposed. The folder walk and the duplicate finder use it for hard-link tracking. The MFT module may keep `FileReference(u64)` internally.
-- `EntryFlags` bitflags with neutral names: `Symlink`, `Junction`, `CloudPlaceholder`, `Hidden`, `System`, `Inaccessible`, `Compressed`, `Sparse`.
+- `FileIdentity` is an opaque newtype (Windows: volume serial + file ID; Linux: device + inode, and only for files with more than one link). Only `Eq`, `Hash`, `Clone`, `Copy` are exposed. The folder walk and the duplicate finder use it for hard-link tracking. The MFT module may keep `FileReference(u64)` internally.
+- `EntryFlags` bitflags with neutral names: `Symlink`, `Junction`, `CloudPlaceholder`, `Hidden`, `System`, `Inaccessible`, `Compressed`, `Sparse`. On Linux `Junction` marks a mount point (a directory whose device differs from its parent's), so a scan never leaves the file system it started on.
 - `VolumeSummary { mount_point: PathBuf, label, file_system, total, free, supports_fast_scan }`. `mount_point` (for example `C:\`) is the primary identifier, not a drive letter.
 - Platform errors are `thiserror` enums with `source: std::io::Error`. On Windows build them with `io::Error::from_raw_os_error` or `.into()` from `windows::core::Error` so the exact Win32 code and message are kept. `windows::core::Error` never appears in a public type outside `platform/windows/`.
 - Times cross the seam as `SystemTime`, converted inside the backend. The file tree `Node` may still store a compact `u64` internally.
@@ -626,21 +626,24 @@ Functions in `platform/` take and return only crate-owned types, never `windows:
 ### Rules
 
 - `windows`, `windows-sys` and `libc` appear only under `[target.'cfg(windows)'.dependencies]` (and later `cfg(unix)`) in Cargo.toml.
-- `#[cfg(windows)]` is allowed only in `platform/mod.rs`, in the `mft` module root (the MFT scanner is the one legitimately Windows-only feature, gated as a whole), in `src-tauri/src/elevation.rs`, and in Cargo.toml. Nowhere else. A CI grep enforces this.
+- `#[cfg(windows)]` (and any other OS cfg) is allowed only in `platform/mod.rs`, in `crates/mount_table/src/lib.rs` (a Linux-only crate, gated as a whole), in the `mft` module root (the MFT scanner is the one legitimately Windows-only feature, gated as a whole), in `src-tauri/src/elevation.rs`, and in Cargo.toml. Nowhere else. A CI grep enforces this.
 - No path handling that assumes backslashes or drive letters outside `platform/`. Use `Path` and `PathBuf` methods. The `\\?\` extended-length prefix is applied inside `platform/windows/` only.
 - Use existing cross-platform crates where they already wrap the OS correctly: `trash` for the Recycle Bin (its Windows backend uses `IFileOperation` with undo) and `dirs` for the known folders (Pictures, Videos, Music, Documents, Downloads, Desktop). Reveal in file manager, thumbnails (`IShellItemImageFactory`), SSD seek-penalty detection, cloud-placeholder detection and the MFT scanner stay as Windows implementations inside `platform/windows/`.
 - Fast scan is exposed to the UI purely as a capability (`supports_fast_scan` on `VolumeSummary`). The UI already handles "fast scan unavailable" for exFAT or unelevated; other platforms hit the same path.
-- CI runs `cargo check -p disk_scanner -p duplicate_finder -p file_actions` on `ubuntu-latest` with `continue-on-error: true`. It is expected to fail until unix backends exist; its purpose is to make Windows assumptions visible early.
+- CI runs the full check (Biome, tsc, Vitest, fmt, clippy, cargo test) on both `windows-latest` and `ubuntu-22.04`.
+- Paths are case-insensitive on Windows and case-sensitive on Linux. Code that compares paths or names asks the platform (`is_same_or_inside_folder`, the frontend's `pathsAreCaseSensitive`); tree lookups try an exact name match before falling back to ignoring case. Search stays case-insensitive everywhere.
+- Linux mount facts (mount table, labels, disk space, rotational and removable flags) come from the `mount_table` crate, which reads `/proc/self/mountinfo`, `/sys` and `statvfs` only.
+- Known Linux limitation: file names that are not valid UTF-8 are shown with replacement characters and marked inaccessible.
 
 ### Feature matrix
 
-| Feature | Windows (now) | macOS (later) | Linux (later) |
+| Feature | Windows | macOS (later) | Linux (0.2.0) |
 |---|---|---|---|
 | Folder walk | yes | yes | yes |
 | Fast scan | MFT | none | none |
 | Elevation | `runas` | not needed | not needed |
 | Recycle | `IFileOperation` via `trash` | `trash` | `trash` |
-| Reveal | Explorer | `open -R` | `xdg-open` |
-| Thumbnails | shell image factory | QuickLook | own decoder + icons |
+| Reveal | Explorer | `open -R` | D-Bus `FileManager1.ShowItems`, falling back to `xdg-open` on the folder |
+| Thumbnails | shell image factory | QuickLook | existing freedesktop thumbnail cache, then own decoder for common images; no icons |
 | Cloud placeholders | file attributes | dataless via `getattrlist` | none |
 | SSD detection | seek penalty ioctl | IOKit | sysfs `rotational` |

@@ -1,6 +1,6 @@
 # Vexbyte Storage Map
 
-Disk space explorer and duplicate finder. Ships on Windows today; macOS and Linux are coming soon. Tauri 2 + Rust (edition 2024) + React 19 + TypeScript.
+Disk space explorer and duplicate finder. Ships on Windows and Linux (x64); macOS is coming soon. Tauri 2 + Rust (edition 2024) + React 19 + TypeScript.
 The full design is in `PLAN.md`. Read sections 3 (code style), 4 (layout) and 15 (safety) before writing code.
 
 ## Non-negotiable safety rules
@@ -21,6 +21,9 @@ The full design is in `PLAN.md`. Read sections 3 (code style), 4 (layout) and 15
 - Rust: `thiserror` enums per module, newtypes for ids/indices, all `unsafe` and Win32 calls inside a
   `windows_api` module per crate, `#![deny(clippy::unwrap_used, clippy::expect_used)]` in library crates
   (tests exempt), `cargo clippy -- -W clippy::pedantic` clean.
+- Platform code lives in each crate's `platform/windows/` and `platform/linux/`; OS `cfg` only in
+  `platform/mod.rs` (`scripts/check-platform-cfg.sh`). Linux code can be type-checked from Windows with
+  `cargo clippy --target x86_64-unknown-linux-gnu -p <crate>`.
 - TypeScript: strict, named exports only, one component per file (PascalCase), hooks hold logic,
   no direct `invoke`, everything via `src/lib/backend/`. No `any`.
 - Biome (not ESLint/Prettier): 2 spaces, double quotes, width 100.
@@ -38,6 +41,9 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
+
+Release notes are hand-written in `CHANGELOG.md` ("What's new" for users, optional "Developer
+information"). A tag fails to release when its version has no section there.
 
 Crates in `crates/` must build and test without Tauri. `src-tauri` is a thin adapter only.
 
