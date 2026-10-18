@@ -1,11 +1,13 @@
 //! Scans drives and folders and builds a compact in-memory file tree.
 //!
 //! This crate knows nothing about Tauri or the user interface. Scanning is strictly read-only.
-//! All operating system calls live in `platform`; Windows is the only backend so far.
+//! All operating system calls live in `platform`, which has a Windows and a Linux backend.
 
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 
 pub mod cancellation;
+#[cfg(test)]
+mod example_paths;
 pub mod fast_scan_availability;
 pub mod file_identity;
 pub mod file_tree;

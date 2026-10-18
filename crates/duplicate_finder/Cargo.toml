@@ -1,6 +1,6 @@
 [package]
 name = "duplicate_finder"
-description = "Finds exact duplicate personal files on Windows."
+description = "Finds exact duplicate personal files on Windows and Linux."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -28,6 +28,10 @@ windows = { workspace = true, features = [
     "Win32_System_Ioctl",
     "Win32_System_WindowsProgramming",
 ] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+mount_table.workspace = true
+rustix = { workspace = true, features = ["fs"] }
 
 [dev-dependencies]
 serde_json.workspace = true

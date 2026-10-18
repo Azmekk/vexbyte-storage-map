@@ -11,8 +11,10 @@ use crate::file_identity::FileIdentity;
 const COPIED_LINK_GROUP_VOLUME_ID: u64 = u64::MAX;
 
 impl FileTree {
-    /// Follows `path_components` (directory and file names below the root) down the tree,
-    /// comparing names case-insensitively as Windows file systems do.
+    /// Follows `path_components` (directory and file names below the root) down the tree.
+    /// A child with exactly the wanted name wins, so `A` and `a` in a case-sensitive folder
+    /// are told apart; otherwise names are compared case-insensitively as Windows file systems
+    /// do.
     pub(crate) fn find_descendant_by_names<'component>(
         &self,
         path_components: impl IntoIterator<Item = &'component OsStr>,
@@ -20,13 +22,28 @@ impl FileTree {
         let mut current = self.root();
         for component in path_components {
             let wanted_name = component.to_string_lossy();
-            current = self.children(current).find(|&child| {
-                let child_node = &self.nodes[child.as_usize()];
-                !child_node.flags.contains(NodeFlags::SYNTHETIC)
-                    && names_are_equal_ignoring_case(self.name(child), &wanted_name)
-            })?;
+            current = self
+                .find_real_child(current, |name| name == wanted_name)
+                .or_else(|| {
+                    self.find_real_child(current, |name| {
+                        names_are_equal_ignoring_case(name, &wanted_name)
+                    })
+                })?;
         }
         Some(current)
+    }
+
+    /// The first child of `parent` that is not a synthetic grouping folder and whose name is
+    /// accepted by `is_wanted_name`.
+    fn find_real_child(
+        &self,
+        parent: NodeIndex,
+        is_wanted_name: impl Fn(&str) -> bool,
+    ) -> Option<NodeIndex> {
+        self.children(parent).find(|&child| {
+            let child_node = &self.nodes[child.as_usize()];
+            !child_node.flags.contains(NodeFlags::SYNTHETIC) && is_wanted_name(self.name(child))
+        })
     }
 
     /// Copies the subtree under `node` into a new tree whose root is `node` and whose root
@@ -88,8 +105,9 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
 
     use super::*;
+    use crate::file_tree::NodeKind;
     use crate::file_tree::OnlineOnlyVisibility;
-    use crate::file_tree::test_trees::sample_tree;
+    use crate::file_tree::test_trees::{entry, sample_tree};
 
     #[test]
     fn finds_nodes_by_name_ignoring_case_and_extracts_their_subtree() {
@@ -118,5 +136,21 @@ mod tests {
             tree.find_descendant_by_names([OsStr::new("missing")])
                 .is_none()
         );
+    }
+
+    #[test]
+    fn an_exact_name_wins_over_a_name_in_another_case() {
+        let mut builder = FileTreeBuilder::new(PathBuf::from("root"), DirectoryKey::new(0));
+        builder.add_entry(&entry("A", NodeKind::File, 0, None, 1));
+        builder.add_entry(&entry("a", NodeKind::File, 0, None, 2));
+        let tree = builder.finish();
+
+        let size_of_child_named = |name: &str| {
+            let node = tree.find_descendant_by_names([OsStr::new(name)]).unwrap();
+            tree.node(node).unwrap().logical_size()
+        };
+
+        assert_eq!(size_of_child_named("A"), 1);
+        assert_eq!(size_of_child_named("a"), 2);
     }
 }

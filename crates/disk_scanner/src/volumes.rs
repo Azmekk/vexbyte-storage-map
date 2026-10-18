@@ -33,9 +33,9 @@ pub struct VolumeSummary {
     pub drive_type: DriveType,
     /// What the volume really is. A [`VolumeKind::CloudVirtual`] volume is never scanned.
     pub kind: VolumeKind,
-    /// The file system allows a fast scan. On Windows that is an NTFS volume, read through its
+    /// The file system allows a fast scan. Only an NTFS volume on Windows does, read through its
     /// Master File Table, which additionally needs administrator rights; see
-    /// [`crate::fast_scan_availability`]. Always false for a cloud virtual volume.
+    /// [`crate::fast_scan_availability`]. Always false on Linux and for a cloud virtual volume.
     pub supports_fast_scan: bool,
 }
 

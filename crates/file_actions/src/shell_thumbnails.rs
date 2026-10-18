@@ -47,15 +47,18 @@ pub enum ThumbnailError {
     CacheWriteFailed { path: PathBuf, source: io::Error },
 }
 
-/// Renders a PNG thumbnail of `path` about `size_pixels` square through the shell, so videos get
-/// a frame and documents a page preview. Falls back to the file type icon when no preview
-/// exists. Cloud placeholders always get the icon, because a preview would download them.
+/// Renders a PNG thumbnail of `path` about `size_pixels` square through the platform. On Windows
+/// the shell renders it, so videos get a frame and documents a page preview; on Linux pictures
+/// are decoded, or taken from the freedesktop thumbnail cache. Falls back to the file type icon
+/// when no preview exists and the platform has icons (Linux has none here). Cloud placeholders
+/// always get the icon, because a preview would download them.
 ///
-/// Uses COM on the calling thread; call it from a background thread, not the UI thread.
+/// May block and, on Windows, uses COM on the calling thread; call it from a background thread,
+/// not the UI thread.
 ///
 /// # Errors
 ///
-/// Fails when the file does not exist, or the shell can produce neither preview nor icon.
+/// Fails when the file does not exist, or the platform can produce neither preview nor icon.
 pub fn render_thumbnail_png(path: &Path, size_pixels: u32) -> Result<ThumbnailPng, ThumbnailError> {
     let stamp = read_file_stamp(path).map_err(|source| ThumbnailError::SourceNotFound {
         path: path.to_path_buf(),

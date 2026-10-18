@@ -212,6 +212,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
 
     use super::*;
+    use crate::platform::folder_names_ignore_case;
 
     #[test]
     fn deserializes_with_the_default_minimum_size() {
@@ -249,7 +250,12 @@ mod tests {
 
         let kept_folders = remove_nested_folders(folders);
 
-        assert_eq!(kept_folders, vec![root.join("a"), root.join("c")]);
+        let expected_folders = if folder_names_ignore_case() {
+            vec![root.join("a"), root.join("c")]
+        } else {
+            vec![root.join("a"), root.join("A"), root.join("c")]
+        };
+        assert_eq!(kept_folders, expected_folders);
     }
 
     #[test]

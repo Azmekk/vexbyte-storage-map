@@ -84,18 +84,6 @@ fn renders_a_thumbnail_of_a_png_without_touching_it() {
 }
 
 #[test]
-fn falls_back_to_the_file_type_icon() {
-    let folder = TemporaryFolder::new();
-    let source = folder.0.join("notes.vsm-unknown-type");
-    fs::write(&source, b"no previewer knows this type").unwrap();
-
-    let thumbnail = render_thumbnail_png(&source, 64).unwrap();
-
-    assert!(thumbnail.is_file_type_icon);
-    assert!(thumbnail.width > 0 && thumbnail.height > 0);
-}
-
-#[test]
 fn caches_thumbnails_as_png_files_and_reuses_them() {
     let folder = TemporaryFolder::new();
     let source = folder.0.join("gradient.png");

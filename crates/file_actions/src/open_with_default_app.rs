@@ -10,7 +10,7 @@ pub enum OpenWithDefaultAppError {
 }
 
 /// Opens `path` with the application registered for its file type, like a double-click in
-/// Explorer. Programs and scripts are started, so callers should only pass what the user chose to
+/// the file manager. Programs and scripts are started, so callers should only pass what the user chose to
 /// open. Not exercised by automated tests, since it starts other applications.
 ///
 /// # Errors

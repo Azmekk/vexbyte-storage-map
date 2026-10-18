@@ -1,11 +1,13 @@
 use std::collections::HashSet;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use specta::Type;
 
 use crate::file_stamp::FileStamp;
-use crate::platform::{path_exists, read_file_stamp, volume_has_recycle_bin};
+use crate::platform::{
+    has_name_the_shell_would_rewrite, path_exists, read_file_stamp, volume_has_recycle_bin,
+};
 
 /// What happened to each path handed to [`move_to_recycle_bin`].
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Type)]
@@ -55,8 +57,8 @@ pub enum RecycleBinError {
 /// Paths that are relative, missing, or on a drive without a Recycle Bin are refused up front and
 /// reported in [`RecycleResult::failed`]; nothing is ever deleted permanently on purpose. The rest
 /// go to the shell in one operation (through the `trash` crate, which uses `IFileOperation` with
-/// undo enabled on Windows). Afterwards every path is checked: gone means moved, still present
-/// means failed.
+/// undo enabled on Windows and the freedesktop Trash on Linux). Afterwards every path is checked:
+/// gone means moved, still present means failed.
 ///
 /// The shell work runs on a short-lived thread of its own, so the caller's COM state does not
 /// matter. Call it from a background thread; it blocks until the shell is done.
@@ -70,8 +72,11 @@ pub enum RecycleBinError {
 pub fn move_to_recycle_bin(paths: &[PathBuf]) -> Result<RecycleResult, RecycleBinError> {
     let preparation = prepare_recycle(
         paths,
-        |path| read_file_stamp(path).ok(),
-        volume_has_recycle_bin,
+        &RecycleLookups {
+            read_stamp: |path: &Path| read_file_stamp(path).ok(),
+            has_recycle_bin: volume_has_recycle_bin,
+            name_would_be_rewritten: has_name_the_shell_would_rewrite,
+        },
     );
     if preparation.paths_to_move.is_empty() {
         return Ok(summarize_recycle_outcome(preparation, None, path_exists));
@@ -112,12 +117,24 @@ struct RecyclePreparation {
     refused: Vec<RecycleFailure>,
 }
 
-/// Decides which paths may be handed to the shell. Pure apart from the two lookups passed in.
-fn prepare_recycle(
+/// The questions about the file system and the platform that [`prepare_recycle`] needs answered.
+struct RecycleLookups<ReadStamp, HasRecycleBin, NameWouldBeRewritten> {
+    read_stamp: ReadStamp,
+    has_recycle_bin: HasRecycleBin,
+    /// True when the shell would parse the path into a different item than the one named.
+    name_would_be_rewritten: NameWouldBeRewritten,
+}
+
+/// Decides which paths may be handed to the shell. Pure apart from the lookups passed in.
+fn prepare_recycle<ReadStamp, HasRecycleBin, NameWouldBeRewritten>(
     paths: &[PathBuf],
-    read_stamp: impl Fn(&Path) -> Option<FileStamp>,
-    has_recycle_bin: impl Fn(&Path) -> bool,
-) -> RecyclePreparation {
+    lookups: &RecycleLookups<ReadStamp, HasRecycleBin, NameWouldBeRewritten>,
+) -> RecyclePreparation
+where
+    ReadStamp: Fn(&Path) -> Option<FileStamp>,
+    HasRecycleBin: Fn(&Path) -> bool,
+    NameWouldBeRewritten: Fn(&Path) -> bool,
+{
     let mut preparation = RecyclePreparation::default();
     let mut seen_paths = HashSet::new();
 
@@ -128,12 +145,12 @@ fn prepare_recycle(
 
         let refusal_reason = if !path.is_absolute() {
             Some(RecycleFailureReason::NotAbsolute)
-        } else if has_name_the_shell_would_rewrite(path) {
+        } else if (lookups.name_would_be_rewritten)(path) {
             Some(RecycleFailureReason::NameNotSupportedByShell)
         } else {
-            match read_stamp(path) {
+            match (lookups.read_stamp)(path) {
                 None => Some(RecycleFailureReason::NotFound),
-                Some(_) if !has_recycle_bin(path) => {
+                Some(_) if !(lookups.has_recycle_bin)(path) => {
                     Some(RecycleFailureReason::NoRecycleBinOnDrive)
                 }
                 Some(stamp) => {
@@ -157,17 +174,6 @@ fn prepare_recycle(
     }
 
     preparation
-}
-
-/// Win32 path parsing, which the shell uses, strips trailing dots and spaces from every name.
-fn has_name_the_shell_would_rewrite(path: &Path) -> bool {
-    path.components().any(|component| match component {
-        Component::Normal(name) => {
-            let name = name.to_string_lossy();
-            name.ends_with('.') || name.ends_with(' ')
-        }
-        _ => false,
-    })
 }
 
 fn summarize_recycle_outcome(
@@ -232,8 +238,13 @@ mod tests {
 
         let preparation = prepare_recycle(
             &paths,
-            |path| (!path.ends_with("missing.jpg")).then(|| file_of_size(10)),
-            |path| path != removable_drive_file,
+            &RecycleLookups {
+                read_stamp: |path: &Path| {
+                    (!path.ends_with("missing.jpg")).then(|| file_of_size(10))
+                },
+                has_recycle_bin: |path: &Path| path != removable_drive_file,
+                name_would_be_rewritten: |_: &Path| false,
+            },
         );
 
         let refusals: Vec<RecycleFailureReason> = preparation
@@ -266,7 +277,14 @@ mod tests {
             absolute("photo.jpg"),
         ];
 
-        let preparation = prepare_recycle(&paths, |_| Some(file_of_size(1)), |_| true);
+        let preparation = prepare_recycle(
+            &paths,
+            &RecycleLookups {
+                read_stamp: |_: &Path| Some(file_of_size(1)),
+                has_recycle_bin: |_: &Path| true,
+                name_would_be_rewritten: |path: &Path| !path.ends_with("photo.jpg"),
+            },
+        );
 
         let refusals: Vec<RecycleFailureReason> = preparation
             .refused
@@ -291,7 +309,14 @@ mod tests {
             ..file_of_size(4096)
         };
 
-        let preparation = prepare_recycle(&[absolute("folder")], |_| Some(folder_stamp), |_| true);
+        let preparation = prepare_recycle(
+            &[absolute("folder")],
+            &RecycleLookups {
+                read_stamp: |_: &Path| Some(folder_stamp),
+                has_recycle_bin: |_: &Path| true,
+                name_would_be_rewritten: |_: &Path| false,
+            },
+        );
 
         assert_eq!(preparation.paths_to_move[0].size, 0);
     }

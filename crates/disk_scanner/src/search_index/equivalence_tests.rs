@@ -24,6 +24,8 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
+use crate::example_paths::{example_path, example_volume_root, second_example_volume_root};
+
 use super::legacy_search_index::{LegacyVolumeSearchIndex, legacy_search_volume_index};
 use super::search_query::ParsedQuery;
 use super::search_results::{
@@ -265,7 +267,7 @@ fn time_at(seconds: u64, milliseconds: u64) -> SystemTime {
 fn random_tree(seed: u64, node_count: usize) -> FileTree {
     let mut random = Xorshift::new(seed);
     let mut builder =
-        FileTreeBuilder::with_capacity(PathBuf::from(r"C:\"), DirectoryKey::new(0), node_count);
+        FileTreeBuilder::with_capacity(example_volume_root(), DirectoryKey::new(0), node_count);
     let mut directory_keys: Vec<u32> = vec![0];
     let mut next_key = 1_u32;
 
@@ -425,8 +427,8 @@ fn random_tree(seed: u64, node_count: usize) -> FileTree {
 /// ├─ Unlinked items/ (location unknown)  orphan.txt
 /// ├─ cloud.docx (placeholder), link.jpg (hard link), Locked/ (inaccessible)
 /// └─ archive.tar.gz
-fn tricky_tree(mount_point: &str) -> FileTree {
-    let mut builder = FileTreeBuilder::new(PathBuf::from(mount_point), DirectoryKey::new(0));
+fn tricky_tree(mount_point: &Path) -> FileTree {
+    let mut builder = FileTreeBuilder::new(mount_point.to_path_buf(), DirectoryKey::new(0));
     let mut add = |name: &str,
                    kind: NodeKind,
                    parent: Option<u32>,
@@ -581,14 +583,17 @@ fn tricky_tree(mount_point: &str) -> FileTree {
     builder.finish()
 }
 
-fn both_indexes(mount_point: &str, tree: FileTree) -> (LegacyVolumeSearchIndex, VolumeSearchIndex) {
+fn both_indexes(
+    mount_point: &Path,
+    tree: FileTree,
+) -> (LegacyVolumeSearchIndex, VolumeSearchIndex) {
     let legacy = LegacyVolumeSearchIndex::from_file_tree(
-        PathBuf::from(mount_point),
+        mount_point.to_path_buf(),
         tree.clone(),
         ScanMethod::FolderWalk,
     );
     let compact =
-        VolumeSearchIndex::from_file_tree(PathBuf::from(mount_point), tree, ScanMethod::FolderWalk);
+        VolumeSearchIndex::from_file_tree(mount_point.to_path_buf(), tree, ScanMethod::FolderWalk);
     (legacy, compact)
 }
 
@@ -701,8 +706,14 @@ fn assert_paths_resolve(
                 "{uppercase_path:?}"
             );
         }
+        // The legacy lookup prefers a name in exactly the same case, so it may find another
+        // node than the first one ignoring case, but always one with exactly this path.
         if let Some(legacy_found) = legacy.find_searchable_node_by_path(&path) {
-            assert_eq!(Some(legacy_found), expected, "{path:?}");
+            assert_eq!(
+                legacy.tree().full_path(legacy_found).as_ref(),
+                Some(&path),
+                "{path:?}"
+            );
         }
         checked += 1;
     }
@@ -727,7 +738,8 @@ fn has_synthetic_ancestor(index: &VolumeSearchIndex, position: usize) -> bool {
 
 #[test]
 fn the_tricky_tree_gives_the_same_results() {
-    let (legacy, compact) = both_indexes(r"C:\", tricky_tree(r"C:\"));
+    let (legacy, compact) =
+        both_indexes(&example_volume_root(), tricky_tree(&example_volume_root()));
 
     let comparisons = assert_same_results(&legacy, &compact, "tricky tree");
     let checked_paths = assert_paths_resolve(&legacy, &compact, 0..compact.node_count());
@@ -735,32 +747,33 @@ fn the_tricky_tree_gives_the_same_results() {
     assert!(comparisons > 800);
     assert!(checked_paths >= 28);
     assert_eq!(
-        compact.find_searchable_node_by_path(Path::new(r"C:\Unlinked items\orphan.txt")),
+        compact.find_searchable_node_by_path(&example_path("Unlinked items/orphan.txt")),
         None
     );
     assert_eq!(
-        compact.find_searchable_node_by_path(Path::new(r"C:\orphan.txt")),
+        compact.find_searchable_node_by_path(&example_path("orphan.txt")),
         None
     );
     assert_eq!(
-        compact.find_searchable_node_by_path(Path::new(r"C:\NTFS metadata\$MFT")),
+        compact.find_searchable_node_by_path(&example_path("NTFS metadata/$MFT")),
         None
     );
     assert_eq!(
-        compact.find_searchable_node_by_path(Path::new(r"C:\$mft")),
+        compact.find_searchable_node_by_path(&example_path("$mft")),
         None
     );
     assert!(
         compact
-            .find_searchable_node_by_path(Path::new(r"c:\users\ME\photos\BEACH.jpg"))
+            .find_searchable_node_by_path(&example_path("users/ME/photos/BEACH.jpg"))
             .is_some()
     );
 }
 
 #[test]
 fn several_volumes_give_the_same_merged_results() {
-    let (legacy_c, compact_c) = both_indexes(r"C:\", tricky_tree(r"C:\"));
-    let (legacy_d, compact_d) = both_indexes(r"D:\", random_tree(3, 3_000));
+    let (legacy_c, compact_c) =
+        both_indexes(&example_volume_root(), tricky_tree(&example_volume_root()));
+    let (legacy_d, compact_d) = both_indexes(&second_example_volume_root(), random_tree(3, 3_000));
 
     for &query_text in QUERIES {
         let Ok(query) = ParsedQuery::parse(query_text) else {
@@ -792,14 +805,14 @@ fn several_volumes_give_the_same_merged_results() {
 #[test]
 fn small_random_trees_give_the_same_results() {
     for seed in 1..=3 {
-        let (legacy, compact) = both_indexes(r"C:\", random_tree(seed, 8_000));
+        let (legacy, compact) = both_indexes(&example_volume_root(), random_tree(seed, 8_000));
         assert_same_results(&legacy, &compact, &format!("seed {seed}"));
     }
 }
 
 #[test]
 fn every_path_of_a_random_tree_resolves_to_its_node() {
-    let (legacy, compact) = both_indexes(r"C:\", random_tree(77, 4_000));
+    let (legacy, compact) = both_indexes(&example_volume_root(), random_tree(77, 4_000));
 
     let checked = assert_paths_resolve(&legacy, &compact, 0..compact.node_count());
 
@@ -813,7 +826,7 @@ fn large_random_trees_give_the_same_results() {
     let mut total_paths = 0;
     for seed in 1..=50 {
         let tree = random_tree(seed, 200_000);
-        let (legacy, compact) = both_indexes(r"C:\", tree);
+        let (legacy, compact) = both_indexes(&example_volume_root(), tree);
         let comparisons = assert_same_results(&legacy, &compact, &format!("seed {seed}"));
 
         let mut random = Xorshift::new(seed + 1000);
@@ -839,7 +852,7 @@ fn performance_test_tree() -> FileTree {
     const DIRECTORY_COUNT: u32 = 150_000;
     const EXTENSIONS: [&str; 8] = ["jpg", "txt", "dll", "mp4", "json", "js", "pdf", "exe"];
     let mut builder = FileTreeBuilder::with_capacity(
-        PathBuf::from(r"C:\"),
+        example_volume_root(),
         DirectoryKey::new(0),
         DIRECTORY_COUNT as usize * 20 + 100_000,
     );
@@ -886,7 +899,7 @@ fn performance_test_tree() -> FileTree {
 fn the_compact_index_takes_under_60_bytes_per_node() {
     let tree = performance_test_tree();
     let tree_bytes = tree.estimated_memory_bytes();
-    let (legacy, compact) = both_indexes(r"C:\", tree);
+    let (legacy, compact) = both_indexes(&example_volume_root(), tree);
     let node_count = compact.node_count() as f64;
 
     let (legacy_bytes, compact_bytes) = (

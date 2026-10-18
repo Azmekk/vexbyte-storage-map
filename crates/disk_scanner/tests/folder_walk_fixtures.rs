@@ -269,7 +269,7 @@ fn walks_a_fixture_with_nested_folders_hard_links_junctions_and_long_paths() {
         )
         .unwrap();
     assert_eq!(page.children.len(), 3);
-    assert!(page.total_child_count >= 8);
+    assert!(page.total_child_count >= if has_junction { 8 } else { 7 });
     assert!(
         page.children
             .windows(2)

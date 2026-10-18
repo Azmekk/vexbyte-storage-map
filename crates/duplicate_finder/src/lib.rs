@@ -6,7 +6,7 @@
 //! 64 KiB) → full check (BLAKE3). Files on SSDs are hashed in parallel, files on hard disks one
 //! at a time in path order.
 //!
-//! Operating system calls live behind the `platform` module; only a Windows backend exists.
+//! Operating system calls live behind the `platform` module, with Windows and Linux backends.
 
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 

@@ -447,6 +447,10 @@ mod tests {
     use std::time::{Duration, SystemTime};
 
     use super::*;
+    use crate::example_paths::{
+        example_path, example_volume_root, example_volume_root_query, path_below,
+        second_example_volume_root,
+    };
     use crate::file_tree::test_trees::entry;
     use crate::file_tree::{DirectoryKey, FileTreeBuilder, NewEntry};
     use crate::scan_method::ScanMethod;
@@ -468,8 +472,8 @@ mod tests {
     /// │  └─ $MFT                 1000
     /// ├─ beach-notes.txt         20
     /// └─ archive.tar.gz          7000
-    fn sample_index_on(mount_point: &str) -> VolumeSearchIndex {
-        let mut builder = FileTreeBuilder::new(PathBuf::from(mount_point), DirectoryKey::new(0));
+    fn sample_index_on(mount_point: &Path) -> VolumeSearchIndex {
+        let mut builder = FileTreeBuilder::new(mount_point.to_path_buf(), DirectoryKey::new(0));
         builder.add_entry(&entry("Users", NodeKind::Directory, 0, Some(1), 0));
         builder.add_entry(&entry("me", NodeKind::Directory, 1, Some(2), 0));
         builder.add_entry(&entry("Photos", NodeKind::Directory, 2, Some(3), 0));
@@ -497,7 +501,7 @@ mod tests {
         builder.add_entry(&entry("archive.tar.gz", NodeKind::File, 0, None, 7000));
 
         VolumeSearchIndex::from_file_tree(
-            PathBuf::from(mount_point),
+            mount_point.to_path_buf(),
             builder.finish(),
             ScanMethod::FolderWalk,
         )
@@ -514,7 +518,7 @@ mod tests {
 
     fn names(query: &str) -> Vec<String> {
         search(
-            &sample_index_on(r"C:\"),
+            &sample_index_on(&example_volume_root()),
             query,
             SearchSortOrder::NameAscending,
         )
@@ -548,14 +552,16 @@ mod tests {
             ["Beach.JPG", "city.png", "dive.jpg", "holiday 2024"]
         );
         assert_eq!(names("me/photos/holiday"), ["dive.jpg", "holiday 2024"]);
-        assert_eq!(names(r"c:\users\me\report"), ["report.pdf"]);
+        let root = example_volume_root_query();
+        assert_eq!(names(&format!(r"{root}users\me\report")), ["report.pdf"]);
         assert_eq!(names(r"photos\ jpg"), ["Beach.JPG", "dive.jpg"]);
-        assert_eq!(names(r"c:\*.pdf"), ["report.pdf"]);
+        assert_eq!(names(&format!("{root}*.pdf")), ["report.pdf"]);
     }
 
     #[test]
     fn synthetic_folders_are_not_part_of_paths_or_results() {
-        assert_eq!(names(r"c:\$mft"), ["$MFT"]);
+        let root = example_volume_root_query();
+        assert_eq!(names(&format!("{root}$mft")), ["$MFT"]);
         assert_eq!(names("metadata"), Vec::<String>::new());
         assert_eq!(names(r"metadata\"), Vec::<String>::new());
     }
@@ -585,7 +591,7 @@ mod tests {
 
     #[test]
     fn sorts_by_each_order() {
-        let index = sample_index_on(r"C:\");
+        let index = sample_index_on(&example_volume_root());
 
         assert_eq!(
             search(&index, "ext:jpg;png;pdf", SearchSortOrder::SizeDescending),
@@ -607,7 +613,7 @@ mod tests {
 
     #[test]
     fn hits_carry_paths_and_details() {
-        let index = sample_index_on(r"C:\");
+        let index = sample_index_on(&example_volume_root());
         let query = ParsedQuery::parse("dive").unwrap();
 
         let hit = search_volume_index(&index, &query, SearchSortOrder::NameAscending, 10)
@@ -616,9 +622,9 @@ mod tests {
 
         assert_eq!(
             hit.path,
-            Path::new(r"C:\Users\me\Photos\holiday 2024\dive.jpg")
+            example_path("Users/me/Photos/holiday 2024/dive.jpg")
         );
-        assert_eq!(hit.volume_mount_point, Path::new(r"C:\"));
+        assert_eq!(hit.volume_mount_point, example_volume_root());
         assert!(!hit.is_directory);
         assert_eq!(hit.logical_size, 9000);
         assert_eq!(hit.modified_at_unix_milliseconds, Some(200_000));
@@ -631,7 +637,7 @@ mod tests {
 
     #[test]
     fn limits_results_but_counts_every_match() {
-        let index = sample_index_on(r"C:\");
+        let index = sample_index_on(&example_volume_root());
         let query = ParsedQuery::parse("type:file").unwrap();
 
         let matches = search_volume_index(&index, &query, SearchSortOrder::SizeDescending, 2);
@@ -643,7 +649,7 @@ mod tests {
 
     #[test]
     fn an_empty_query_or_zero_limit_finds_nothing() {
-        let index = sample_index_on(r"C:\");
+        let index = sample_index_on(&example_volume_root());
 
         let empty = ParsedQuery::parse("  ").unwrap();
         let some = ParsedQuery::parse("beach").unwrap();
@@ -660,8 +666,8 @@ mod tests {
 
     #[test]
     fn merges_volumes_in_the_requested_order() {
-        let c_volume = sample_index_on(r"C:\");
-        let d_volume = sample_index_on(r"D:\");
+        let c_volume = sample_index_on(&example_volume_root());
+        let d_volume = sample_index_on(&second_example_volume_root());
         let query = ParsedQuery::parse("ext:jpg").unwrap();
 
         let by_size = search_volume_indexes(
@@ -677,29 +683,27 @@ mod tests {
             10,
         );
 
-        let described = |matches: &SearchMatches| -> Vec<String> {
-            matches
-                .hits
-                .iter()
-                .map(|hit| hit.path.display().to_string())
-                .collect()
+        let described = |matches: &SearchMatches| -> Vec<PathBuf> {
+            matches.hits.iter().map(|hit| hit.path.clone()).collect()
         };
+        let on_c = |relative_path| path_below(&example_volume_root(), relative_path);
+        let on_d = |relative_path| path_below(&second_example_volume_root(), relative_path);
         assert_eq!(
             described(&by_size),
             [
-                r"C:\Users\me\Photos\holiday 2024\dive.jpg",
-                r"D:\Users\me\Photos\holiday 2024\dive.jpg",
-                r"C:\Users\me\Photos\Beach.JPG",
+                on_c("Users/me/Photos/holiday 2024/dive.jpg"),
+                on_d("Users/me/Photos/holiday 2024/dive.jpg"),
+                on_c("Users/me/Photos/Beach.JPG"),
             ]
         );
         assert_eq!(by_size.total_match_count, 4);
         assert_eq!(
             described(&by_path),
             [
-                r"C:\Users\me\Photos\Beach.JPG",
-                r"C:\Users\me\Photos\holiday 2024\dive.jpg",
-                r"D:\Users\me\Photos\Beach.JPG",
-                r"D:\Users\me\Photos\holiday 2024\dive.jpg",
+                on_c("Users/me/Photos/Beach.JPG"),
+                on_c("Users/me/Photos/holiday 2024/dive.jpg"),
+                on_d("Users/me/Photos/Beach.JPG"),
+                on_d("Users/me/Photos/holiday 2024/dive.jpg"),
             ]
         );
     }

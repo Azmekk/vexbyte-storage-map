@@ -47,3 +47,25 @@ fn image_flags_for(kind: ShellImageKind) -> SIIGBF {
         ShellImageKind::Icon => SIIGBF_BIGGERSIZEOK | SIIGBF_ICONONLY,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use crate::shell_thumbnails::render_thumbnail_png;
+
+    #[test]
+    fn falls_back_to_the_file_type_icon() {
+        let folder = std::env::temp_dir().join(format!("vsm-icon-fallback-{}", std::process::id()));
+        std::fs::create_dir_all(&folder).unwrap();
+        let source = folder.join("notes.vsm-unknown-type");
+        std::fs::write(&source, b"no previewer knows this type").unwrap();
+
+        let thumbnail = render_thumbnail_png(&source, 64);
+        std::fs::remove_dir_all(&folder).unwrap();
+        let thumbnail = thumbnail.unwrap();
+
+        assert!(thumbnail.is_file_type_icon);
+        assert!(thumbnail.width > 0 && thumbnail.height > 0);
+    }
+}

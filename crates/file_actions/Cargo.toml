@@ -1,6 +1,6 @@
 [package]
 name = "file_actions"
-description = "Shell file actions on Windows: Recycle Bin, reveal in Explorer and thumbnails."
+description = "Shell file actions: Recycle Bin or Trash, reveal in the file manager and thumbnails."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -28,6 +28,11 @@ windows = { workspace = true, features = [
     "Win32_UI_Shell_Common",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+image = { version = "0.25", default-features = false, features = ["bmp", "gif", "jpeg", "png", "webp"] }
+md-5 = "0.10"
+mount_table.workspace = true
 
 [lints]
 workspace = true

@@ -29,5 +29,9 @@ windows = { workspace = true, features = [
     "Win32_System_WindowsProgramming",
 ] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+mount_table.workspace = true
+rustix = { workspace = true, features = ["process"] }
+
 [lints]
 workspace = true

@@ -1,10 +1,11 @@
 //! Shell file actions shared by the disk viewer and the duplicate finder: moving files to the
-//! Recycle Bin, revealing them in Explorer, opening them and producing shell thumbnails.
+//! Recycle Bin (the Trash on Linux), revealing them in the file manager, opening them and
+//! producing thumbnails.
 //!
 //! Everything in this crate that changes the file system (the Recycle Bin) or opens windows and
 //! applications is exercised only by hand, never by automated tests.
 //!
-//! Operating system calls live behind the `platform` module; only a Windows backend exists.
+//! Operating system calls live behind the `platform` module, with a Windows and a Linux backend.
 
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 

@@ -9,7 +9,7 @@ repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repository_root"
 
 platform_cfg_pattern='cfg\(\s*((not|any|all)\(\s*)*(windows|unix|target_os|target_family)\b'
-allowed_files_pattern='(^|/)platform/mod\.rs$|^crates/disk_scanner/src/mft/mod\.rs$|^src-tauri/src/elevation\.rs$'
+allowed_files_pattern='(^|/)platform/mod\.rs$|^crates/mount_table/src/lib\.rs$|^crates/disk_scanner/src/mft/mod\.rs$|^src-tauri/src/elevation\.rs$'
 
 files_with_platform_cfg="$(grep -rlE "$platform_cfg_pattern" --include='*.rs' crates src-tauri/src || true)"
 violating_files="$(printf '%s\n' "$files_with_platform_cfg" | grep -vE "$allowed_files_pattern" | grep -v '^$' || true)"

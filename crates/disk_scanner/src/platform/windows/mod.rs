@@ -29,3 +29,15 @@ pub(crate) use volume_details::{
     volume_mount_point_for_path,
 };
 pub(crate) use volume_mount_points::list_volume_mount_points;
+
+/// A volume root that tests can use to build absolute paths, `C:\` on Windows.
+#[cfg(test)]
+pub(crate) fn example_volume_root() -> std::path::PathBuf {
+    std::path::PathBuf::from(r"C:\")
+}
+
+/// The root of a second example volume for tests, `D:\` on Windows.
+#[cfg(test)]
+pub(crate) fn second_example_volume_root() -> std::path::PathBuf {
+    std::path::PathBuf::from(r"D:\")
+}

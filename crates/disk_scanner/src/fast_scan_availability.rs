@@ -27,7 +27,7 @@ pub fn fast_scan_availability(volume: &VolumeSummary) -> FastScanAvailability {
     }
 }
 
-/// True when the process runs with administrator rights.
+/// True when the process runs with administrator rights (as root on Linux).
 #[must_use]
 pub fn is_process_elevated() -> bool {
     platform::is_process_elevated()

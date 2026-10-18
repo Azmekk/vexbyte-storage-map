@@ -306,12 +306,15 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
 
     use super::*;
+    use crate::example_paths::{
+        example_path, example_volume_root, path_below, second_example_volume_root,
+    };
     use crate::file_tree::test_trees::entry;
     use crate::file_tree::{DirectoryKey, FileTreeBuilder, NewEntry, NodeKind};
 
     fn index_of(builder: FileTreeBuilder) -> VolumeSearchIndex {
         VolumeSearchIndex::from_file_tree(
-            PathBuf::from(r"C:\"),
+            example_volume_root(),
             builder.finish(),
             ScanMethod::FolderWalk,
         )
@@ -330,7 +333,7 @@ mod tests {
 
     #[test]
     fn orders_nodes_by_path_ignoring_case() {
-        let mut builder = FileTreeBuilder::new(PathBuf::from(r"C:\"), DirectoryKey::new(0));
+        let mut builder = FileTreeBuilder::new(example_volume_root(), DirectoryKey::new(0));
         builder.add_entry(&entry("zeta", NodeKind::Directory, 0, Some(1), 0));
         builder.add_entry(&entry("Alpha", NodeKind::Directory, 0, Some(2), 0));
         builder.add_entry(&entry("b.txt", NodeKind::File, 2, None, 1));
@@ -352,7 +355,7 @@ mod tests {
 
     #[test]
     fn synthetic_folders_and_unlinked_items_are_not_searchable() {
-        let mut builder = FileTreeBuilder::new(PathBuf::from(r"C:\"), DirectoryKey::new(0));
+        let mut builder = FileTreeBuilder::new(example_volume_root(), DirectoryKey::new(0));
         builder.add_synthetic_directory(
             "NTFS metadata",
             Some(DirectoryKey::new(0)),
@@ -368,80 +371,89 @@ mod tests {
 
         assert_eq!(names_in_path_order(&index), ["$MFT"]);
         for path in [
-            r"C:\$MFT",
-            r"C:\NTFS metadata\$MFT",
-            r"C:\NTFS metadata",
-            r"C:\orphan.txt",
-            r"C:\Unlinked items\orphan.txt",
-            r"C:\Unlinked items",
+            "$MFT",
+            "NTFS metadata/$MFT",
+            "NTFS metadata",
+            "orphan.txt",
+            "Unlinked items/orphan.txt",
+            "Unlinked items",
         ] {
-            assert_eq!(index.find_searchable_node_by_path(Path::new(path)), None);
+            assert_eq!(
+                index.find_searchable_node_by_path(&example_path(path)),
+                None
+            );
         }
     }
 
     #[test]
     fn finds_only_searchable_nodes_by_their_path() {
-        let mut builder = FileTreeBuilder::new(PathBuf::from(r"C:\"), DirectoryKey::new(0));
+        let mut builder = FileTreeBuilder::new(example_volume_root(), DirectoryKey::new(0));
         builder.add_entry(&entry("Users", NodeKind::Directory, 0, Some(1), 0));
         builder.add_entry(&entry("notes.txt", NodeKind::File, 1, None, 5));
         builder.add_entry(&entry("Ärger.TXT", NodeKind::File, 1, None, 5));
         let index = index_of(builder);
 
-        let found = index.find_searchable_node_by_path(Path::new(r"C:\Users\notes.txt"));
+        let found = index.find_searchable_node_by_path(&example_path("Users/notes.txt"));
 
         assert_eq!(index.name(found.unwrap()), "notes.txt");
-        assert_eq!(index.find_searchable_node_by_path(Path::new(r"C:\")), None);
         assert_eq!(
-            index.find_searchable_node_by_path(Path::new(r"C:\Users\missing.txt")),
+            index.find_searchable_node_by_path(&example_volume_root()),
             None
         );
         assert_eq!(
-            index.find_searchable_node_by_path(Path::new(r"D:\Users\notes.txt")),
+            index.find_searchable_node_by_path(&example_path("Users/missing.txt")),
             None
         );
         assert_eq!(
-            index.find_searchable_node_by_path(Path::new(r"C:\Users\..\Users\notes.txt")),
+            index.find_searchable_node_by_path(&path_below(
+                &second_example_volume_root(),
+                "Users/notes.txt"
+            )),
             None
         );
         assert_eq!(
-            index.find_searchable_node_by_path(Path::new(r"C:\notes.txt")),
+            index.find_searchable_node_by_path(&example_path("Users/../Users/notes.txt")),
             None
         );
         assert_eq!(
-            index.find_searchable_node_by_path(Path::new(r"C:\Other\notes.txt")),
+            index.find_searchable_node_by_path(&example_path("notes.txt")),
             None
         );
         assert_eq!(
-            index.find_searchable_node_by_path(Path::new(r"C:\Users\notes.txt\notes.txt")),
+            index.find_searchable_node_by_path(&example_path("Other/notes.txt")),
+            None
+        );
+        assert_eq!(
+            index.find_searchable_node_by_path(&example_path("Users/notes.txt/notes.txt")),
             None
         );
     }
 
     #[test]
     fn a_path_in_a_different_case_finds_the_same_node() {
-        let mut builder = FileTreeBuilder::new(PathBuf::from(r"C:\"), DirectoryKey::new(0));
+        let mut builder = FileTreeBuilder::new(example_volume_root(), DirectoryKey::new(0));
         builder.add_entry(&entry("Users", NodeKind::Directory, 0, Some(1), 0));
         builder.add_entry(&entry("notes.txt", NodeKind::File, 1, None, 5));
         builder.add_entry(&entry("Ärger.TXT", NodeKind::File, 1, None, 5));
         let index = index_of(builder);
 
-        let notes = index.find_searchable_node_by_path(Path::new(r"C:\Users\notes.txt"));
-        let anger = index.find_searchable_node_by_path(Path::new(r"C:\Users\Ärger.TXT"));
+        let notes = index.find_searchable_node_by_path(&example_path("Users/notes.txt"));
+        let anger = index.find_searchable_node_by_path(&example_path("Users/Ärger.TXT"));
 
         assert!(notes.is_some() && anger.is_some());
         assert_eq!(
-            index.find_searchable_node_by_path(Path::new(r"C:\USERS\NOTES.TXT")),
+            index.find_searchable_node_by_path(&example_path("USERS/NOTES.TXT")),
             notes
         );
         assert_eq!(
-            index.find_searchable_node_by_path(Path::new(r"C:\users\ärger.txt")),
+            index.find_searchable_node_by_path(&example_path("users/ärger.txt")),
             anger
         );
     }
 
     #[test]
     fn keeps_totals_and_frees_the_scan_arena() {
-        let mut builder = FileTreeBuilder::new(PathBuf::from(r"C:\"), DirectoryKey::new(0));
+        let mut builder = FileTreeBuilder::new(example_volume_root(), DirectoryKey::new(0));
         builder.add_entry(&entry("Users", NodeKind::Directory, 0, Some(1), 0));
         builder.add_entry(&entry("notes.txt", NodeKind::File, 1, None, 5));
         builder.add_entry(&entry("todo.txt", NodeKind::File, 1, None, 5));
@@ -450,7 +462,10 @@ mod tests {
         assert_eq!(index.file_count(), 2);
         assert_eq!(index.directory_count(), 1);
         assert_eq!(index.node_count(), 4);
-        assert_eq!(index.name(NodeIndex::new(0)), r"C:\");
+        assert_eq!(
+            index.name(NodeIndex::new(0)),
+            example_volume_root().to_string_lossy()
+        );
         assert!(index.estimated_memory_bytes() < 4 * 64 + 256);
     }
 }

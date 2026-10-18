@@ -2,7 +2,10 @@
 //!
 //! A focused parser for the handful of attributes the tree needs, fed by large sequential
 //! reads. The parsing is plain byte handling and builds everywhere; only opening a volume is
-//! Windows-specific, so this module root is the one place that gates on the platform.
+//! Windows-specific, so this module root is the one place that gates on the platform. On other
+//! platforms only the tests reach the parser, so its unused-code warnings are silenced there.
+
+#![cfg_attr(not(windows), allow(dead_code, unused_imports))]
 
 mod attributes;
 mod data_runs;

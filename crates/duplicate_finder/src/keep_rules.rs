@@ -97,6 +97,7 @@ mod tests {
 
     use super::*;
     use crate::duplicate_group::DuplicateGroupId;
+    use crate::platform::folder_names_ignore_case;
 
     fn at_second(second: u64) -> SystemTime {
         UNIX_EPOCH + Duration::from_secs(second)
@@ -168,10 +169,24 @@ mod tests {
     #[test]
     fn preferred_folder_keeps_the_copy_inside_it() {
         let mut group = sample_group();
-        let folder = std::env::temp_dir().join("photos");
+        let folder = std::env::temp_dir().join("Photos");
         apply_keep_rule(&mut group, &KeepRule::PreferredFolder(folder));
 
         assert!(kept_path(&group).starts_with(std::env::temp_dir().join("Photos")));
+    }
+
+    #[test]
+    fn preferred_folder_matches_case_as_the_platform_does() {
+        let mut group = sample_group();
+        let folder = std::env::temp_dir().join("photos");
+        apply_keep_rule(&mut group, &KeepRule::PreferredFolder(folder));
+
+        let expected_folder = if folder_names_ignore_case() {
+            "Photos"
+        } else {
+            "Backup"
+        };
+        assert!(kept_path(&group).starts_with(std::env::temp_dir().join(expected_folder)));
     }
 
     #[test]

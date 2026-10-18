@@ -181,6 +181,7 @@ fn tree_queries_meet_the_targets_on_a_million_nodes() {
 fn folder_walk_of_the_user_profile() {
     let folder = std::env::var_os("VSM_BENCHMARK_FOLDER")
         .or_else(|| std::env::var_os("USERPROFILE"))
+        .or_else(|| std::env::var_os("HOME"))
         .map(PathBuf::from)
         .unwrap();
 

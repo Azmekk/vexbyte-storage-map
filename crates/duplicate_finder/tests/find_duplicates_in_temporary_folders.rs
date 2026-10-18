@@ -3,6 +3,8 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+mod platform;
+
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -147,10 +149,10 @@ impl DuplicateFixture {
     }
 
     /// The real system folder guard would reject the fixtures, because the temp directory lies
-    /// inside `AppData`. Only the Windows folder counts as a system folder here.
+    /// inside `AppData` (Windows) or is `/tmp` (Linux). Only the folders of the operating system
+    /// itself count as system folders here.
     fn test_guard() -> SystemFolderGuard {
-        let windows_folder = PathBuf::from(std::env::var_os("SystemRoot").unwrap());
-        SystemFolderGuard::with_system_folders(vec![windows_folder])
+        SystemFolderGuard::with_system_folders(platform::operating_system_folders())
     }
 
     fn search(&self) -> DuplicateSearchResult {
@@ -468,15 +470,12 @@ fn selecting_archives_finds_the_zip_copies() {
 
 #[test]
 fn rejects_system_folders() {
-    let system_folders = [
-        PathBuf::from(std::env::var_os("SystemRoot").unwrap()),
-        PathBuf::from(std::env::var_os("ProgramFiles").unwrap()),
-        PathBuf::from(std::env::var_os("ProgramData").unwrap()),
-        dirs::data_local_dir().unwrap(),
-        std::env::temp_dir(),
-    ];
+    let mut system_folders = platform::operating_system_folders();
+    system_folders.extend([dirs::data_local_dir().unwrap(), std::env::temp_dir()]);
 
-    for system_folder in system_folders {
+    // A fresh Linux home may have no ~/.local/share yet; a missing folder is rejected earlier as
+    // not found, which is not what this test is about.
+    for system_folder in system_folders.into_iter().filter(|folder| folder.exists()) {
         let settings =
             DuplicateSearchSettings::new(vec![system_folder.clone()], vec![FileCategory::Images]);
 

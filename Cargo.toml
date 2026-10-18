@@ -5,11 +5,12 @@ members = [
     "crates/duplicate_finder",
     "crates/file_actions",
     "crates/file_categories",
+    "crates/mount_table",
     "src-tauri",
 ]
 
 [workspace.package]
-version = "0.1.3"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.99.1"
 license = "MIT"
@@ -20,6 +21,7 @@ disk_scanner = { path = "crates/disk_scanner" }
 duplicate_finder = { path = "crates/duplicate_finder" }
 file_actions = { path = "crates/file_actions" }
 file_categories = { path = "crates/file_categories" }
+mount_table = { path = "crates/mount_table" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -37,6 +39,7 @@ tauri = { version = "2", features = [] }
 tauri-build = { version = "2", features = [] }
 
 windows = "0.62"
+rustix = "1"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

@@ -9,8 +9,9 @@ pub enum RevealInExplorerError {
     RevealFailed { path: PathBuf, source: io::Error },
 }
 
-/// Opens the folder containing `path` in Explorer with the item selected. Changes nothing on
-/// disk. Not exercised by automated tests, since it opens a window.
+/// Opens the folder containing `path` in Explorer (on Linux, the desktop's file manager) with the
+/// item selected. Changes nothing on disk. Not exercised by automated tests, since it opens a
+/// window.
 ///
 /// # Errors
 ///
