@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2026-10-19
+### What's new
+- A "Restart as admin" button in the top bar, on every page, restarts the app with admin rights so the fast scan is ready without first picking a drive. It shows on Windows while the app runs without admin rights.
+
 ## 0.2.0 - 2026-10-20
 ### What's new
 - Vexbyte Storage Map now runs on Linux. Download a .deb (Debian, Ubuntu, Mint), .rpm (Fedora, RHEL) or AppImage (Arch and others).

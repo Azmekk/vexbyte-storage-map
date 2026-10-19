@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { AdminRestartButton } from "@/features/scan/AdminRestartButton";
 import { ThemeToggle } from "./ThemeToggle";
 
 type TopBarProps = {
@@ -8,7 +9,7 @@ type TopBarProps = {
   navigation?: ReactNode;
   /** Left side: a title or breadcrumbs. */
   children: ReactNode;
-  /** Right side, before the theme toggle. */
+  /** Right side, before the restart as admin button and the theme toggle. */
   actions?: ReactNode;
 };
 
@@ -32,6 +33,7 @@ export function TopBar({ navigation, children, actions }: TopBarProps) {
       <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
       <div className="flex shrink-0 items-center gap-1.5">
         {actions}
+        <AdminRestartButton />
         <ThemeToggle />
       </div>
     </header>

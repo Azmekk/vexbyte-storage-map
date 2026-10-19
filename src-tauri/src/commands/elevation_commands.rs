@@ -79,6 +79,22 @@ pub async fn relaunch_elevated(
     Ok(())
 }
 
+/// Restarts the app with administrator rights on the home screen, without starting a scan.
+/// Windows shows the UAC prompt; when the user accepts, the new instance starts and this one
+/// exits. When the user declines, this returns `elevationDeclined` and the app keeps running.
+#[tauri::command]
+#[specta::specta]
+pub async fn relaunch_as_administrator(app: AppHandle) -> Result<(), ElevationCommandError> {
+    if elevation::is_process_elevated() {
+        return Err(ElevationCommandError::AlreadyElevated);
+    }
+
+    tauri::async_runtime::spawn_blocking(elevation::relaunch_elevated).await??;
+
+    app.exit(0);
+    Ok(())
+}
+
 /// The scan this instance was started for (by `relaunch_elevated`), if any. The frontend starts
 /// it once on load. It stays the same for the lifetime of the instance.
 #[tauri::command]

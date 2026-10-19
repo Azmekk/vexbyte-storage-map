@@ -1,5 +1,7 @@
 //! Administrator rights: the app always starts unelevated (the manifest says `asInvoker`), and
-//! the fast scan needs them, so the user can restart the app elevated for one scan.
+//! the fast scan needs them, so the user can restart the app elevated, for one scan or on its own.
+
+use std::ffi::OsString;
 
 use disk_scanner::ScanTarget;
 
@@ -27,9 +29,21 @@ pub fn is_process_elevated() -> bool {
 ///
 /// Fails when the user declines the prompt or Windows cannot start the new instance.
 pub fn relaunch_elevated_for_scan(target: &ScanTarget) -> Result<(), RelaunchError> {
-    let arguments = arguments_for_startup_scan(target);
+    launch_elevated_with_arguments(&arguments_for_startup_scan(target))
+}
 
-    platform::launch_current_executable_elevated(&arguments).map_err(|source| {
+/// Starts a new elevated instance that opens on the home screen, without starting a scan. Like
+/// [`relaunch_elevated_for_scan`], this blocks on the UAC prompt and the caller exits afterwards.
+///
+/// # Errors
+///
+/// Fails when the user declines the prompt or Windows cannot start the new instance.
+pub fn relaunch_elevated() -> Result<(), RelaunchError> {
+    launch_elevated_with_arguments(&[])
+}
+
+fn launch_elevated_with_arguments(arguments: &[OsString]) -> Result<(), RelaunchError> {
+    platform::launch_current_executable_elevated(arguments).map_err(|source| {
         if platform::is_cancelled_by_user(&source) {
             RelaunchError::DeclinedByUser
         } else {

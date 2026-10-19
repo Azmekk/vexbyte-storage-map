@@ -56,6 +56,7 @@ pub fn create_bindings_builder() -> Builder<Wry> {
             duplicate_commands::recycle_duplicates,
             elevation_commands::get_elevation_status,
             elevation_commands::relaunch_elevated,
+            elevation_commands::relaunch_as_administrator,
             elevation_commands::get_startup_scan_request,
             search_commands::get_search_index_status,
             search_commands::refresh_search_index,

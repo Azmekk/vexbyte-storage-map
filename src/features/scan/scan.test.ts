@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { chooseScanOptions } from "./chooseScanOptions";
 import { describeScanFailure } from "./describeScanFailure";
 import { describeScanTarget, scanMethodLabel } from "./describeScanTarget";
+import { shouldOfferAdminRestart } from "./shouldOfferAdminRestart";
 import { useScanStore } from "./useScanStore";
 
 describe("chooseScanOptions", () => {
@@ -16,6 +17,18 @@ describe("chooseScanOptions", () => {
 
   it("only offers the standard scan on other file systems", () => {
     expect(chooseScanOptions(false, true)).toEqual({ kind: "single", method: "folderWalk" });
+  });
+});
+
+describe("shouldOfferAdminRestart", () => {
+  it("offers the restart on Windows without admin rights", () => {
+    expect(shouldOfferAdminRestart("windows", false)).toBe(true);
+  });
+
+  it("hides it when elevated, while unknown, and on Linux", () => {
+    expect(shouldOfferAdminRestart("windows", true)).toBe(false);
+    expect(shouldOfferAdminRestart("windows", null)).toBe(false);
+    expect(shouldOfferAdminRestart("linux", false)).toBe(false);
   });
 });
 

@@ -107,6 +107,12 @@ export const commands = {
 	 */
 	relaunchElevated: (target: ScanTarget) => typedError<null, ElevationCommandError>(__TAURI_INVOKE("relaunch_elevated", { target })),
 	/**
+	 *  Restarts the app with administrator rights on the home screen, without starting a scan.
+	 *  Windows shows the UAC prompt; when the user accepts, the new instance starts and this one
+	 *  exits. When the user declines, this returns `elevationDeclined` and the app keeps running.
+	 */
+	relaunchAsAdministrator: () => typedError<null, ElevationCommandError>(__TAURI_INVOKE("relaunch_as_administrator")),
+	/**
 	 *  The scan this instance was started for (by `relaunch_elevated`), if any. The frontend starts
 	 *  it once on load. It stays the same for the lifetime of the instance.
 	 */

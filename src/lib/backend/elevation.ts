@@ -37,6 +37,15 @@ export async function relaunchElevated(target: ScanTarget): Promise<void> {
   unwrapCommandResult(result, describeElevationCommandError);
 }
 
+/**
+ * Restarts the app as administrator on the home screen, without a scan. When the user accepts
+ * the Windows prompt this window closes; when they decline it rejects with `elevationDeclined`.
+ */
+export async function relaunchAsAdministrator(): Promise<void> {
+  const result = await commands.relaunchAsAdministrator();
+  unwrapCommandResult(result, describeElevationCommandError);
+}
+
 /** The scan this instance was started for by `relaunchElevated`, if any. Start it once on load. */
 export async function getStartupScanRequest(): Promise<StartupScanRequest | null> {
   const result = await commands.getStartupScanRequest();
