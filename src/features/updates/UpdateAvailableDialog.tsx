@@ -1,4 +1,4 @@
-import { DownloadIcon, SparklesIcon } from "lucide-react";
+import { CircleArrowDownIcon, DownloadIcon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -19,10 +19,10 @@ export function UpdateAvailableDialog() {
       open={updateCheck.availableVersion !== null}
       onOpenChange={(isOpen) => !isOpen && updateCheck.remindLater()}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="sm:max-w-lg">
         <AlertDialogHeader>
           <AlertDialogMedia>
-            <SparklesIcon />
+            <CircleArrowDownIcon />
           </AlertDialogMedia>
           <AlertDialogTitle>A new version is available</AlertDialogTitle>
           <AlertDialogDescription>
