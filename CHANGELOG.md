@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 - 2026-10-19
+### What's new
+- The "new version available" prompt is wider, so its buttons fit, and shows a download icon instead of the stars.
+- The Recycle Bin confirmations are wider, so long file lists are easier to read.
+
 ## 0.2.1 - 2026-10-19
 ### What's new
 - A "Restart as admin" button in the top bar, on every page, restarts the app with admin rights so the fast scan is ready without first picking a drive. It shows on Windows while the app runs without admin rights.
