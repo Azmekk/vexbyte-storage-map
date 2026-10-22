@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 - 2026-10-22
+### What's new
+- "Your drives" now shows up-to-date used and free space after you clean up a drive, instead of the numbers from when the app started. It refreshes each time you open the page and when you switch back to the app.
+
 ## 0.2.2 - 2026-10-19
 ### What's new
 - The "new version available" prompt is wider, so its buttons fit, and shows a download icon instead of the stars.
