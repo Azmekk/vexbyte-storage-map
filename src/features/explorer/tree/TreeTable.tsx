@@ -37,12 +37,17 @@ export function TreeTable({ scanId, shownFolder, parentOfShownFolder }: TreeTabl
     getItemKey: (rowIndex) => model.rows[rowIndex]?.key ?? rowIndex,
   });
 
-  const { focusedRowIndex } = model;
+  const { focusedRowIndex, selectedNode } = model;
+  // Scroll only when the selection changes, not when expanding or collapsing a folder above the
+  // selected row moves its index; the selected node may not have a row yet while its page loads.
+  const lastScrolledNode = useRef<NodeIndex | null>(null);
   useEffect(() => {
-    if (focusedRowIndex >= 0) {
-      virtualizer.scrollToIndex(focusedRowIndex, { align: "auto" });
+    if (focusedRowIndex < 0 || selectedNode === lastScrolledNode.current) {
+      return;
     }
-  }, [focusedRowIndex, virtualizer]);
+    lastScrolledNode.current = selectedNode;
+    virtualizer.scrollToIndex(focusedRowIndex, { align: "auto" });
+  }, [focusedRowIndex, selectedNode, virtualizer]);
 
   const firstRevealedRowIndex =
     model.lastExpandedFolder === null
