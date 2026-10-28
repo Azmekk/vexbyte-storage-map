@@ -1,6 +1,6 @@
-use super::attributes::attribute_list::parse_attribute_list;
+use super::attributes::attribute_list::{AttributeListEntry, parse_attribute_list_bytes};
 use super::attributes::data::unnamed_data_runs;
-use super::attributes::{ATTRIBUTE_LIST_TYPE, DATA_TYPE, attributes_of};
+use super::attributes::{ATTRIBUTE_LIST_TYPE, DATA_TYPE, RawAttribute, attributes_of};
 use super::data_runs::{DataRun, decode_data_runs};
 use super::file_record::prepare_file_record;
 use super::mft_chunk_reader::{MftExtent, VolumeBytes, mft_extents_from_runs};
@@ -8,6 +8,9 @@ use super::mft_scan_error::MftScanError;
 use super::volume_layout::NtfsVolumeLayout;
 
 const MFT_RECORD_NUMBER: u64 = 0;
+/// An `$ATTRIBUTE_LIST` of `$MFT` holds a few dozen bytes per extension record. A list claiming
+/// far more than that is corrupt, and this cap keeps a corrupt one from allocating gigabytes.
+const MAXIMUM_ATTRIBUTE_LIST_SIZE: u64 = 1024 * 1024;
 
 /// Finds where the MFT lies on the volume by reading record 0, `$MFT` itself, and decoding
 /// the data runs of its `$DATA` attribute. The MFT can be fragmented; the runs give its real
@@ -15,6 +18,10 @@ const MFT_RECORD_NUMBER: u64 = 0;
 ///
 /// On a very fragmented MFT the `$DATA` attribute of `$MFT` is split over extension records
 /// listed in its `$ATTRIBUTE_LIST`; those records are read through the runs found so far.
+///
+/// Windows often stores that list non-resident even when it is tiny, as soon as `$MFT` needs an
+/// extension record at all (a fragmented `$BITMAP` of `$MFT` is enough). The list's own data
+/// runs address clusters directly, so it can be read from the volume before the MFT is known.
 pub(crate) fn locate_mft_extents<Volume: VolumeBytes>(
     volume: &Volume,
     layout: &NtfsVolumeLayout,
@@ -36,7 +43,7 @@ pub(crate) fn locate_mft_extents<Volume: VolumeBytes>(
         if let Some((starting_virtual_cluster, encoded_runs)) = unnamed_data_runs(&attribute) {
             data_run_pieces.push((starting_virtual_cluster, decode_data_runs(encoded_runs)?));
         } else if attribute.type_code == ATTRIBUTE_LIST_TYPE {
-            let entries = parse_attribute_list(&attribute).ok_or(MftScanError::MftTooFragmented)?;
+            let entries = read_attribute_list(volume, layout, &attribute)?;
             extension_records_with_data.extend(
                 entries
                     .iter()
@@ -79,6 +86,65 @@ pub(crate) fn locate_mft_extents<Volume: VolumeBytes>(
         layout.bytes_per_cluster,
         layout.mft_valid_data_length,
     )?)
+}
+
+/// The entries of `$MFT`'s `$ATTRIBUTE_LIST`, whether it is stored inside record 0 or in its
+/// own clusters on the volume.
+fn read_attribute_list<Volume: VolumeBytes>(
+    volume: &Volume,
+    layout: &NtfsVolumeLayout,
+    attribute: &RawAttribute<'_>,
+) -> Result<Vec<AttributeListEntry>, MftScanError> {
+    if let Some(resident_list) = attribute.resident_value() {
+        return Ok(parse_attribute_list_bytes(resident_list));
+    }
+    let non_resident = attribute
+        .non_resident_header()
+        .ok_or_else(|| attribute_list_unreadable("its header is malformed"))?;
+    if non_resident.data_size > MAXIMUM_ATTRIBUTE_LIST_SIZE {
+        return Err(attribute_list_unreadable("it is implausibly large"));
+    }
+    let list_size = usize::try_from(non_resident.data_size)
+        .map_err(|_| attribute_list_unreadable("it is implausibly large"))?;
+    let bytes_per_cluster = layout.bytes_per_cluster as usize;
+
+    // Volume reads are sector-sized: whole clusters are read, then the list is cut to its size.
+    let mut list = Vec::with_capacity(list_size);
+    for run in decode_data_runs(non_resident.data_runs)? {
+        if list.len() >= list_size {
+            break;
+        }
+        let first_cluster = run
+            .first_cluster
+            .ok_or_else(|| attribute_list_unreadable("it contains a sparse run"))?;
+        let clusters_still_needed = (list_size - list.len()).div_ceil(bytes_per_cluster) as u64;
+        let clusters_to_read = run.cluster_count.min(clusters_still_needed);
+        let run_length = usize::try_from(clusters_to_read)
+            .ok()
+            .and_then(|clusters| clusters.checked_mul(bytes_per_cluster))
+            .ok_or_else(|| attribute_list_unreadable("it is implausibly large"))?;
+        let run_start = list.len();
+        list.resize(run_start + run_length, 0);
+        read_exactly(
+            volume,
+            first_cluster.saturating_mul(u64::from(layout.bytes_per_cluster)),
+            &mut list[run_start..],
+        )?;
+    }
+    if list.len() < list_size {
+        return Err(attribute_list_unreadable(
+            "its data runs are shorter than its size",
+        ));
+    }
+    list.truncate(list_size);
+    Ok(parse_attribute_list_bytes(&list))
+}
+
+fn attribute_list_unreadable(reason: &str) -> MftScanError {
+    MftScanError::MftRecordUnreadable {
+        record_number: MFT_RECORD_NUMBER,
+        reason: format!("the $ATTRIBUTE_LIST of $MFT could not be read: {reason}"),
+    }
 }
 
 /// Each extent of a fragmented attribute decodes its runs independently; ordered by their

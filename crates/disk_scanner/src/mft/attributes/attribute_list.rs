@@ -16,29 +16,43 @@ pub(crate) struct AttributeListEntry {
     pub(crate) record: FileReference,
 }
 
-/// Parses a resident `$ATTRIBUTE_LIST`. Returns `None` when the list is non-resident; the
-/// scanner then relies on the base record references of the extension records alone.
+/// Parses a resident `$ATTRIBUTE_LIST`. Returns `None` when the list is non-resident; while
+/// sweeping the MFT the scanner then relies on the base record references of the extension
+/// records alone. Locating the MFT itself reads a non-resident list from the volume instead
+/// and parses it with [`parse_attribute_list_bytes`].
 pub(crate) fn parse_attribute_list(
     attribute: &RawAttribute<'_>,
 ) -> Option<Vec<AttributeListEntry>> {
-    let list = attribute.resident_value()?;
+    Some(parse_attribute_list_bytes(attribute.resident_value()?))
+}
+
+/// Parses the value of an `$ATTRIBUTE_LIST`, wherever it was read from. Stops at the first
+/// entry that is cut off or malformed.
+pub(crate) fn parse_attribute_list_bytes(list: &[u8]) -> Vec<AttributeListEntry> {
     let mut entries = Vec::new();
     let mut offset = 0;
 
     while offset + MINIMUM_ENTRY_LENGTH <= list.len() {
-        let entry_length = read_u16(list, offset + 4)? as usize;
+        let Some((entry, entry_length)) = entry_at(list, offset) else {
+            break;
+        };
         if entry_length < MINIMUM_ENTRY_LENGTH {
             break;
         }
-        entries.push(AttributeListEntry {
-            attribute_type: read_u32(list, offset)?,
-            starting_virtual_cluster: read_u64(list, offset + 8)?,
-            record: FileReference::from_raw(read_u64(list, offset + 16)?),
-        });
+        entries.push(entry);
         offset += entry_length;
     }
 
-    Some(entries)
+    entries
+}
+
+fn entry_at(list: &[u8], offset: usize) -> Option<(AttributeListEntry, usize)> {
+    let entry = AttributeListEntry {
+        attribute_type: read_u32(list, offset)?,
+        starting_virtual_cluster: read_u64(list, offset + 8)?,
+        record: FileReference::from_raw(read_u64(list, offset + 16)?),
+    };
+    Some((entry, read_u16(list, offset + 4)? as usize))
 }
 
 #[cfg(test)]

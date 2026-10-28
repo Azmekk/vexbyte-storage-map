@@ -141,20 +141,28 @@ impl RecordBuilder {
 
     /// Entries are `(attribute type, starting virtual cluster, record holding it)`.
     pub(crate) fn attribute_list(self, entries: &[(u32, u64, FileReference)]) -> Self {
-        let mut value = Vec::new();
-        for (attribute_id, &(attribute_type, starting_virtual_cluster, record)) in
-            entries.iter().enumerate()
-        {
-            let mut entry = vec![0_u8; 32];
-            entry[0..4].copy_from_slice(&attribute_type.to_le_bytes());
-            entry[4..6].copy_from_slice(&32_u16.to_le_bytes());
-            entry[7] = 26;
-            entry[8..16].copy_from_slice(&starting_virtual_cluster.to_le_bytes());
-            entry[16..24].copy_from_slice(&record.raw().to_le_bytes());
-            entry[24..26].copy_from_slice(&(attribute_id as u16).to_le_bytes());
-            value.extend_from_slice(&entry);
-        }
+        let value = attribute_list_value(entries);
         self.with_resident_attribute(ATTRIBUTE_LIST_TYPE, "", &value)
+    }
+
+    /// An `$ATTRIBUTE_LIST` stored in its own clusters, as Windows does for `$MFT`. Returns the
+    /// builder and the list bytes, which the test writes at the clusters `encoded_runs` name.
+    pub(crate) fn non_resident_attribute_list(
+        self,
+        entries: &[(u32, u64, FileReference)],
+        encoded_runs: &[u8],
+    ) -> (Self, Vec<u8>) {
+        let value = attribute_list_value(entries);
+        let attribute = non_resident_attribute(&NonResidentAttribute {
+            type_code: ATTRIBUTE_LIST_TYPE,
+            flags: 0,
+            starting_virtual_cluster: 0,
+            allocated_size: 4096,
+            data_size: value.len() as u64,
+            total_allocated_size: None,
+            encoded_runs,
+        });
+        (self.with_attribute(attribute), value)
     }
 
     pub(crate) fn reparse_point(self, reparse_tag: u32) -> Self {
@@ -213,6 +221,23 @@ impl RecordBuilder {
         protect_with_update_sequence(&mut record, 0x0001);
         record
     }
+}
+
+fn attribute_list_value(entries: &[(u32, u64, FileReference)]) -> Vec<u8> {
+    let mut value = Vec::new();
+    for (attribute_id, &(attribute_type, starting_virtual_cluster, record)) in
+        entries.iter().enumerate()
+    {
+        let mut entry = vec![0_u8; 32];
+        entry[0..4].copy_from_slice(&attribute_type.to_le_bytes());
+        entry[4..6].copy_from_slice(&32_u16.to_le_bytes());
+        entry[7] = 26;
+        entry[8..16].copy_from_slice(&starting_virtual_cluster.to_le_bytes());
+        entry[16..24].copy_from_slice(&record.raw().to_le_bytes());
+        entry[24..26].copy_from_slice(&(attribute_id as u16).to_le_bytes());
+        value.extend_from_slice(&entry);
+    }
+    value
 }
 
 struct NonResidentAttribute<'runs> {

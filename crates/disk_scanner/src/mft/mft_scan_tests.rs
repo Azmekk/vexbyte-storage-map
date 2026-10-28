@@ -336,6 +336,55 @@ fn builds_the_tree_of_a_synthesized_volume() {
     }
 }
 
+/// What a long-lived Windows system drive looks like: `$MFT` needs an extension record, and
+/// its `$ATTRIBUTE_LIST` lives in its own cluster although it is only a few entries long.
+/// Record 0 maps the first 16 records; the extension record maps the rest, so the scan can only
+/// reach the second half of the MFT after reading the list from the volume.
+#[test]
+fn locates_the_mft_through_a_non_resident_attribute_list() {
+    const ATTRIBUTE_LIST_CLUSTER: u8 = 40;
+    const EXTENSION_RECORD_NUMBER: usize = 15;
+    let mft = FileReference::from_parts(0, 1);
+    let extension = FileReference::from_parts(EXTENSION_RECORD_NUMBER as u64, 1);
+    let root = FileReference::from_parts(5, 5);
+
+    let (record_zero, attribute_list) = RecordBuilder::new(1)
+        .standard_information(0, 0x06)
+        .file_name(root, Win32AndDos, "$MFT")
+        .non_resident_data(0, 32_768, 32_768, &[0x11, 0x04, 0x04, 0x00])
+        .non_resident_attribute_list(
+            &[(DATA_TYPE, 0, mft), (DATA_TYPE, 16, extension)],
+            &[0x11, 0x01, ATTRIBUTE_LIST_CLUSTER, 0x00],
+        );
+    let extension_record = RecordBuilder::new(1)
+        .extension_of(mft)
+        .non_resident_data(16, 0, 0, &[0x11, 0x04, 0x14, 0x00])
+        .build();
+
+    let (mut volume, layout) = sample_volume();
+    volume.write(record_offset(0), &record_zero.build());
+    volume.write(record_offset(EXTENSION_RECORD_NUMBER), &extension_record);
+    volume.write(
+        usize::from(ATTRIBUTE_LIST_CLUSTER) * CLUSTER_SIZE,
+        &attribute_list,
+    );
+
+    let tree = scan_mft_from_volume_bytes(
+        &volume,
+        &layout,
+        PathBuf::from("X:\\"),
+        DEFAULT_MFT_CHUNK_SIZE_BYTES,
+        &NoProgressReporting,
+        &CancellationToken::new(),
+    )
+    .unwrap();
+
+    assert!(
+        child_names(&tree, tree.root()).contains(&"last.txt".to_owned()),
+        "record 31, in the second MFT extent, was reached through the extension record"
+    );
+}
+
 #[test]
 fn stops_when_cancelled() {
     let (volume, layout) = sample_volume();
