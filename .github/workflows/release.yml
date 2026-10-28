@@ -16,7 +16,7 @@ jobs:
     outputs:
       release-id: ${{ steps.create.outputs.release-id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Write the release notes
         run: |
@@ -50,7 +50,7 @@ jobs:
     needs: create-release
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The pnpm version comes from the packageManager field in package.json.
       - uses: pnpm/action-setup@v4
@@ -93,7 +93,7 @@ jobs:
     needs: create-release
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install the Linux build dependencies of Tauri
         run: |
