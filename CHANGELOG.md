@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4 - 2026-10-28
+### What's new
+- The fast scan no longer stops with "the MFT is too fragmented to be located" on drives where Windows keeps the MFT's attribute list in its own cluster, which is common on system drives that have been in use for a while. The scan now reads that list from the drive and continues.
+
 ## 0.2.3 - 2026-10-22
 ### What's new
 - "Your drives" now shows up-to-date used and free space after you clean up a drive, instead of the numbers from when the app started. It refreshes each time you open the page and when you switch back to the app.
