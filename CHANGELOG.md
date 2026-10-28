@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5 - 2026-10-28
+### What's new
+- Expanding or collapsing a folder no longer scrolls the folder list away when a row further down is selected. The list stays where it is and only scrolls when you select a different item.
+
 ## 0.2.4 - 2026-10-28
 ### What's new
 - The fast scan no longer stops with "the MFT is too fragmented to be located" on drives where Windows keeps the MFT's attribute list in its own cluster, which is common on system drives that have been in use for a while. The scan now reads that list from the drive and continues.
